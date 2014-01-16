@@ -5,7 +5,7 @@
 #  All Rights Reserved
 #
 
-OBJS = stkserver.o
+OBJS = stkserver.o packet.o stkuser.o
 LIBS = 
 EXE = stkserver
 
