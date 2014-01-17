@@ -18,14 +18,16 @@ int main(int argc, char argv[])
     int data_len;
     unsigned short cmd;
 
+    stk_read_user();
+
     if ((server_fd = stk_server_socket()) == -1){
         printf("create stkserver socket error!exiting....\n");
         exit(0);
     }
 
-    printf("==========================================\n");
-    printf("========= waiting for stk client  ========\n");
-    printf("==========================================\n");
+    printf("====================================================\n");
+    printf("=============== waiting for stk client  ============\n");
+    printf("====================================================\n");
 
     while(1){
         if((conn_fd = accept(server_fd, (struct sockaddr*)NULL, NULL)) == -1){
