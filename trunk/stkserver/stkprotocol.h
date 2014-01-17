@@ -37,6 +37,7 @@ typedef struct{
     unsigned short stkp_cmd;
     unsigned short stkp_sid;
     unsigned int stkp_uid;
+    unsigned int stkp_token;
     unsigned char stkp_reserve;
     unsigned char stkp_flag;
     unsigned short stkp_length;
