@@ -1,6 +1,7 @@
 {
     "Jerry": {
         "uid": 107,
+        "nickname": "Jerry",
         "pass": "",
         "city": "Wuhan",
         "phone": 107,
@@ -8,6 +9,7 @@
     },
     "Yellow": {
         "uid": 108,
+        "nickname": "Yellow",
         "pass": "",
         "city": "Beijing",
         "phone": 108,
@@ -15,6 +17,7 @@
     },
     "Mary": {
         "uid": 109,
+        "nickname": "Mary",
         "pass": "",
         "city": "Shenzhen",
         "phone": 109,

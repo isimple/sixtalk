@@ -6,7 +6,16 @@
  *
  */
 
-stk_client *clients;
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "list.h"
+#include "stkprotocol.h"
+#include "stkserver.h"
 
 int main(int argc, char argv[])
 {
@@ -14,11 +23,10 @@ int main(int argc, char argv[])
     int conn_fd;
     int bytes;
     //int conn_fd[STK_MAX_CLIENTS];
-    char buf[STK_MAX_PACKET_SIZE];
-    int data_len;
-    unsigned short cmd;
+    char buf[STK_MAX_PACKET_SIZE] = {0};
+    stk_client *client;
 
-    stk_read_user();
+    stk_init_user();
 
     if ((server_fd = stk_server_socket()) == -1){
         printf("create stkserver socket error!exiting....\n");
@@ -46,44 +54,46 @@ int main(int argc, char argv[])
             continue;
         }
 
-        data_len = stk_parse_packet(buf, bytes);
-        if (data_len < 0){
+        client = stk_parse_packet(buf, bytes);
+        if (client == NULL || client->stkc_data.len < 0){
             printf("bad stkp message, continue.");
             continue;
         }
 
-        switch (state) {
+        client->stkc_fd = conn_fd;
+
+        switch (client->stkc_data.cmd) {
         case STKP_CMD_REQ_LOGIN:
-            stk_reqlogin_ack();
+            stk_reqlogin_ack(client);
             break;
         case STKP_CMD_LOGIN:
-            stk_login_ack();
+            stk_login_ack(client);
             break;
         case STKP_CMD_KEEPALIVE:
-            stk_keepalive_ack();
+            stk_keepalive_ack(client);
             break;
         case STKP_CMD_LOGOUT:
             /* do something */
             break;
         case STKP_CMD_GET_USER:
-            stk_getuser_ack();
+            stk_getuser_ack(client);
             break;
         case STKP_CMD_GET_ONLINE_USER:
-            stk_getonlineuser_ack();
+            stk_getonlineuser_ack(client);
             break;
         case STKP_CMD_USER_INFO:
-            stk_getinfo_ack();
+            stk_getinfo_ack(client);
             break;
         case STKP_CMD_SEND_MSG:
-            stk_sendmsg_ack();
+            stk_sendmsg_ack(client);
             break;
         default:
-            printf("unknow stkp cmd, drop it.")
+            printf("unknow stkp cmd, drop it.");
         }
 
     }
 
-    close(listenfd);
+    close(server_fd);
 
     return 0;
 }

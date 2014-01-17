@@ -5,8 +5,9 @@
 #  All Rights Reserved
 #
 
+CC = gcc
 OBJS = stkserver.o packet.o stkuser.o cJSON.o
-LIBS = 
+LIBS = -lm
 EXE = stkserver
 
 $(EXE): $(OBJS) 
