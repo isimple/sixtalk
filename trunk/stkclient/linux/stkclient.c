@@ -8,91 +8,125 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "stkprotocol.h"
-#include "stkclient.h"
+#include "stk.h"
 
-int main(int argc, char argv[])
+client_config client;
+
+int main(int argc, char *argv[])
 {
-    int server_fd;
-    int conn_fd;
+    char recvbuf[STK_MAX_PACKET_SIZE] = {0};
+    char sendbuf[STK_MAX_PACKET_SIZE] = {0};
+    stk_buddy buddy;
+    struct sockaddr_in servaddr;
     int bytes;
-    //int conn_fd[STK_MAX_CLIENTS];
-    char buf[STK_MAX_PACKET_SIZE] = {0};
-    stk_client *client;
+    fd_set rset, wset;
+    int max_fd;
+    struct timeval to;
+    int input_fd;
+    int ret;
 
-    stk_init_user();
-
-    if ((server_fd = stk_server_socket()) == -1){
-        printf("create stkserver socket error!exiting....\n");
+    if( argc != 3){
+        printf("usage: %s <ipaddress> <uid>\n", argv[0]);
         exit(0);
     }
 
-    printf("====================================================\n");
-    printf("=============== waiting for stk client  ============\n");
-    printf("====================================================\n");
+    memset(&client, 0, sizeof(client_config));
+    client.uid = atoi(argv[2]);
+    input_fd = fileno(stdin);
 
-    while(1){
-        if((conn_fd = accept(server_fd, (struct sockaddr*)NULL, NULL)) == -1){
-            printf("accept socket error: %s(errno: %d)",strerror(errno),errno);
-            continue;
-        }
-
-        memset(buf, 0, sizeof(buf));
-        bytes = recv(conn_fd, buf, STK_MAX_PACKET_SIZE, 0);
-        if (bytes == -1){
-            printf("recv socket error: %s(errno: %d)",strerror(errno),errno);
-            continue;
-        }
-        if (bytes > STK_MAX_PACKET_SIZE){
-            printf("receive packet is too large, drop it.");
-            continue;
-        }
-
-        client = stk_parse_packet(buf, bytes);
-        if (client == NULL || client->stkc_data.len < 0){
-            printf("bad stkp message, continue.");
-            continue;
-        }
-
-        client->stkc_fd = conn_fd;
-
-        switch (client->stkc_data.cmd) {
-        case STKP_CMD_REQ_LOGIN:
-            stk_reqlogin_ack(client);
-            break;
-        case STKP_CMD_LOGIN:
-            stk_login_ack(client);
-            break;
-        case STKP_CMD_KEEPALIVE:
-            stk_keepalive_ack(client);
-            break;
-        case STKP_CMD_LOGOUT:
-            /* do something */
-            break;
-        case STKP_CMD_GET_USER:
-            stk_getuser_ack(client);
-            break;
-        case STKP_CMD_GET_ONLINE_USER:
-            stk_getonlineuser_ack(client);
-            break;
-        case STKP_CMD_USER_INFO:
-            stk_getinfo_ack(client);
-            break;
-        case STKP_CMD_SEND_MSG:
-            stk_sendmsg_ack(client);
-            break;
-        default:
-            printf("unknow stkp cmd, drop it.");
-        }
-
+    if((client.fd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+        printf("create socket error: %s(errno: %d)\n",strerror(errno),errno);
+        exit(0);
+    }
+ 
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(STK_SERVER_PORT);
+    if( inet_pton(AF_INET, argv[1], &servaddr.sin_addr) <= 0){
+        printf("inet_pton error for %s\n",argv[1]);
+        exit(0);
     }
 
-    close(server_fd);
+    if( connect(client.fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0){
+        printf("connect error: %s(errno: %d)\n",strerror(errno),errno);
+        exit(0);
+    }
+
+    memset(sendbuf, 0, sizeof(sendbuf));
+
+    ret = stk_login(client.fd, sendbuf, client.uid);
+    if (ret == STK_CLIENT_LOGIN_ERROR){
+        printf("======== STK Client [%d] login failed ========\n", client.uid);
+        exit(0);
+    } else if (ret == STK_CLIENT_LOGIN_INVALID_UID){
+        printf("======== STK Client [%d] unregistered ========\n", client.uid);
+        exit(0);
+    } else if (ret == STK_CLIENT_LOGIN_INVALID_PASS){
+        printf("======== STK Client [%d] authenticate failed ========\n", client.uid);
+        exit(0);
+    }
+
+    memset(&buddy, 0 ,sizeof(stk_buddy));
+    ret = stk_send_getprofile(client.fd, sendbuf,  client.uid, client.uid, &buddy);
+    if (ret == -1){
+        printf("======== STK Client [%d] get profile failed ========\n", client.uid);
+        exit(0);
+    } else {
+        memcpy(client.nickname, buddy.nickname, STK_NICKNAME_SIZE);
+        memcpy(client.city, buddy.city,STK_CITY_SIZE);
+        client.phone = buddy.phone;
+        client.gender = buddy.gender;
+    }
+
+    ret = stk_send_getbuddylist(client.fd, sendbuf, client.uid);
+    if (ret == -1){
+        printf("======== STK Client [%d] get buddy list failed ========\n", client.uid);
+        exit(0);
+    }
+
+    stk_print_hello();
+    printf("Please input command: ");
+    fflush(stdout);
+
+    while(1){
+        FD_ZERO(&rset);
+        FD_ZERO(&wset);
+
+        FD_SET(input_fd,&rset);
+        FD_SET(client.fd,&rset);
+
+        max_fd = (input_fd > client.fd) ? input_fd : client.fd;
+        to.tv_sec  = STK_SELECT_TIMEOUT;
+        to.tv_usec = 0;
+
+        ret = select(max_fd+1, &rset, &wset, NULL, &to);
+        if ( ret < 0){
+            /* error happened with select */
+            printf("select error: %s(errno: %d)\n",strerror(errno),errno);
+            continue;
+        } else if ( ret == 0 ) {
+            /* select timeout */
+        } else { 
+            /* data is available */
+            if (FD_ISSET(input_fd, &rset)) 
+            {
+                stk_hanle_input(input_fd, &client);
+            }
+            if (FD_ISSET(client.fd, &rset))
+            {
+                stk_handle_msg(client.fd);
+            }
+        }
+    }
+
+    close(client.fd);
 
     return 0;
 }

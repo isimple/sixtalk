@@ -12,10 +12,10 @@
 #include <string.h>
 
 #include "cJSON.h"
-#include "list.h"
-#include "stkserver.h"
+#include "stk.h"
 
-#define BUF_SIZE_MAX 4096
+#define BUF_SIZE_MAX      4096
+#define STK_UNKNOWN_USER  -2
 
 LIST_HEAD(stk_users);
 
@@ -63,8 +63,15 @@ int stk_init_user()
         if (client != NULL) {
             INIT_LIST_HEAD(&client->list);
             client->stkc_uid = cJSON_GetObjectItem(item,"uid")->valueint;
+#if 1
+            strcpy(client->stkc_nickname, cJSON_GetObjectItem(item,"nickname")->valuestring);
             strcpy(client->stkc_pass, cJSON_GetObjectItem(item,"pass")->valuestring);
             strcpy(client->stkc_city, cJSON_GetObjectItem(item,"city")->valuestring);
+#else
+            memcpy(client->stkc_nickname, cJSON_GetObjectItem(item,"nickname")->valuestring, STK_NICKNAME_SIZE);
+            memcpy(client->stkc_pass, cJSON_GetObjectItem(item,"pass")->valuestring, STK_PASS_SIZE);
+            memcpy(client->stkc_city, cJSON_GetObjectItem(item,"city")->valuestring, STK_CITY_SIZE);
+#endif
             client->stkc_phone = cJSON_GetObjectItem(item,"phone")->valueint;
             client->stkc_gender = cJSON_GetObjectItem(item,"gender")->valueint;
 
@@ -72,7 +79,7 @@ int stk_init_user()
         } else {
             printf("malloc error: %s(errno: %d)\n",strerror(errno),errno);
             continue;
-		}
+        }
     }
 
     free(root);
@@ -81,29 +88,30 @@ int stk_init_user()
 
 stk_client *stk_find_user(unsigned int uid)
 {
-	struct list_head *entry;
+    struct list_head *entry;
 
-	list_for_each(entry, &stk_users) {
-		stk_client *client;
-		client = list_entry(entry, stk_client, list);
-		if (client->stkc_uid== uid)
-			return client;
-	}
-	return NULL;
+    list_for_each(entry, &stk_users) {
+        stk_client *client;
+        client = list_entry(entry, stk_client, list);
+        if (client->stkc_uid== uid)
+            return client;
+    }
+    return NULL;
 }
 
-int stk_add_user(stk_client client)
+int stk_add_user(stk_client *client)
 {
     stk_client *new_client;
 
     new_client = (stk_client *)malloc(sizeof(stk_client));
     if (new_client != NULL) {
         INIT_LIST_HEAD(&new_client->list);
-        new_client->stkc_uid = client.stkc_uid;
-        strcpy(new_client->stkc_pass, client.stkc_pass);
-        strcpy(new_client->stkc_city, client.stkc_city);
-        new_client->stkc_phone = client.stkc_phone;
-        new_client->stkc_gender = client.stkc_gender;
+        new_client->stkc_uid = client->stkc_uid;
+        strcpy(new_client->stkc_nickname, client->stkc_nickname);
+        strcpy(new_client->stkc_pass, client->stkc_pass);
+        strcpy(new_client->stkc_city, client->stkc_city);
+        new_client->stkc_phone = client->stkc_phone;
+        new_client->stkc_gender = client->stkc_gender;
 
         list_add_tail(&new_client->list, &stk_users);
     } else {
@@ -113,3 +121,66 @@ int stk_add_user(stk_client client)
 
     return 0;
 }
+
+int stk_get_pass(unsigned int uid, char *pass)
+{
+    stk_client *client;
+
+    if (pass == NULL) {
+        printf("NULL Pointer, return");
+        return STK_NULL_POINTER;
+    }
+
+    client = stk_find_user(uid);
+    if (client == NULL) {
+        return STK_UNKNOWN_USER;
+    }
+    memcpy(pass, client->stkc_pass, STK_PASS_SIZE);
+    return 0;
+}
+
+int stk_get_token(unsigned int uid)
+{
+    stk_client *client;
+
+    client = stk_find_user(uid);
+    if (client == NULL) {
+        return uid;
+    } else {
+        return client->stkc_token;
+    }
+}
+
+unsigned short stk_get_usernum()
+{
+    struct list_head *entry;
+    unsigned short num = 0;
+
+    if (!list_empty(&stk_users)) {
+        list_for_each(entry, &stk_users) {
+            num++;
+        }
+    }
+
+    return num;
+}
+
+int stk_print_user(stk_client *client)
+{
+    if (client == NULL) {
+        return STK_UNKNOWN_USER;
+    }
+
+    printf("====================================================\n");
+    printf("=============== STK Client information  ============\n");
+    printf("====================================================\n");
+    printf("Uid:\t\t%d\n", client->stkc_uid);
+    printf("Nickname:\t%s\n", client->stkc_nickname);
+    printf("State:\t\t%s\n", (client->stkc_state == STK_CLIENT_ONLINE)?"online":"offline");
+    printf("City:\t\t%s\n", client->stkc_city);
+    printf("Phone:\t\t%d\n", client->stkc_phone);
+    printf("Gender\t\t%s\n", (client->stkc_gender == STK_GENDER_BOY)?"boy":"girl");
+    printf("====================================================\n");
+}
+
+
