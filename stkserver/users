@@ -2,7 +2,7 @@
     "Jerry": {
         "uid": 107,
         "nickname": "Jerry",
-        "pass": "",
+        "pass": "107",
         "city": "Wuhan",
         "phone": 107,
         "gender": 1
@@ -10,7 +10,7 @@
     "Yellow": {
         "uid": 108,
         "nickname": "Yellow",
-        "pass": "",
+        "pass": "108",
         "city": "Beijing",
         "phone": 108,
         "gender": 1
@@ -18,7 +18,7 @@
     "Mary": {
         "uid": 109,
         "nickname": "Mary",
-        "pass": "",
+        "pass": "109",
         "city": "Shenzhen",
         "phone": 109,
         "gender": 0

@@ -6,7 +6,7 @@
 #
 
 CC = gcc
-OBJS = stkserver.o packet.o stkuser.o cJSON.o
+OBJS = stkserver.o stkpacket.o stkuser.o cJSON.o
 LIBS = -lm
 EXE = stkserver
 

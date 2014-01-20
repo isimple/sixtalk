@@ -6,7 +6,7 @@
 #
 
 CC = gcc
-OBJS = stkclient.o packet.o
+OBJS = stkclient.o stkpacket.o stkui.o stkbuddy.o
 LIBS = 
 EXE = stkclient
 
@@ -16,7 +16,7 @@ $(EXE): $(OBJS)
 clean: 
 	rm -f *.o *.d
 	rm -f $(EXE)
-	
+
 #
 # Include the rule for making dependency files.
 # The '-' in front of the second include suppresses
