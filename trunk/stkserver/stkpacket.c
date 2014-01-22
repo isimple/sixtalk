@@ -138,6 +138,10 @@ int stk_login_ack(int fd, unsigned int uid, char *buf)
 
     tmp = buf + sizeof(stkp_head);
 
+    len = 1;
+    len = htons(len);
+    memcpy(tmp-2, &len, 2);
+
     if (ret == -2) {
         *tmp = STK_LOGIN_INVALID_UID;
     } else {
