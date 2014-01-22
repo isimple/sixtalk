@@ -43,6 +43,7 @@ int stk_add_buddy(stk_buddy *buddy)
 
     new_buddy = (stk_buddy *)malloc(sizeof(stk_buddy));
     if (new_buddy != NULL) {
+        memset(new_buddy, 0, sizeof(stk_buddy));
         INIT_LIST_HEAD(&new_buddy->list);
         new_buddy->uid = buddy->uid;
         memcpy(new_buddy->nickname, buddy->nickname, STK_NICKNAME_SIZE);
@@ -98,12 +99,20 @@ unsigned short stk_get_buddynum()
 
 stk_buddy *stk_get_next(stk_buddy *buddy)
 {
+    struct list_head *next_list;
     stk_buddy *next_buddy;
+
     if (buddy == NULL) {
         next_buddy = list_entry(stk_buddys.next, stk_buddy, list);
     } else {
-        next_buddy = list_entry(buddy->list.next, stk_buddy, list);
+        next_list = buddy->list.next;
+        if (next_list == &stk_buddys) {
+            next_list = next_list->next;
+		}
+        next_buddy = list_entry(next_list, stk_buddy, list);
     }
+
+	return next_buddy;
 }
 
 int stk_print_buddy(stk_buddy *buddy)

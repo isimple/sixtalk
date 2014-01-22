@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "cJSON.h"
 #include "stk.h"
@@ -61,6 +62,8 @@ int stk_init_user()
 #endif
         client = (stk_client *)malloc(sizeof(stk_client));
         if (client != NULL) {
+            memset(client, 0, sizeof(stk_client));
+            stk_user_offline(client);
             INIT_LIST_HEAD(&client->list);
             client->stkc_uid = cJSON_GetObjectItem(item,"uid")->valueint;
 #if 1
@@ -93,7 +96,7 @@ stk_client *stk_find_user(unsigned int uid)
     list_for_each(entry, &stk_users) {
         stk_client *client;
         client = list_entry(entry, stk_client, list);
-        if (client->stkc_uid== uid)
+        if (client->stkc_uid == uid)
             return client;
     }
     return NULL;
@@ -105,6 +108,8 @@ int stk_add_user(stk_client *client)
 
     new_client = (stk_client *)malloc(sizeof(stk_client));
     if (new_client != NULL) {
+        memset(new_client, 0, sizeof(stk_client));
+        stk_user_offline(new_client);
         INIT_LIST_HEAD(&new_client->list);
         new_client->stkc_uid = client->stkc_uid;
         strcpy(new_client->stkc_nickname, client->stkc_nickname);
@@ -151,6 +156,33 @@ int stk_get_token(unsigned int uid)
     }
 }
 
+pthread_t stk_get_tid(unsigned int uid)
+{
+    stk_client *client;
+
+    client = stk_find_user(uid);
+    if (client == NULL) {
+        return STK_ERR_TID;
+    } else {
+        return client->stkc_tid;
+    }
+}
+
+stk_client *stk_get_user_by_tid(pthread_t tid)
+{
+    struct list_head *entry;
+
+    list_for_each(entry, &stk_users) {
+        stk_client *client;
+        client = list_entry(entry, stk_client, list);
+        if (client->stkc_tid == tid)
+            return client;
+    }
+    return NULL;
+
+}
+
+
 unsigned short stk_get_usernum()
 {
     struct list_head *entry;
@@ -164,6 +196,48 @@ unsigned short stk_get_usernum()
 
     return num;
 }
+
+stk_client *stk_get_next(stk_client *client)
+{
+    struct list_head *next_list;
+    stk_client *next_client;
+
+    if (client == NULL) {
+        next_client = list_entry(stk_users.next, stk_client, list);
+    } else {
+        next_list = client->list.next;
+        if (next_list == &stk_users) {
+            next_list = next_list->next;
+		}
+        next_client = list_entry(next_list, stk_client, list);
+    }
+    return next_client;
+}
+
+int stk_user_offline(stk_client *client)
+{
+    if (client == NULL) {
+        return -1;
+    } else {
+        client->stkc_fd = -1;
+        client->stkc_state = STK_CLIENT_OFFLINE;
+        client->stkc_data = NULL;
+		return 0;
+    }
+}
+
+void stk_clear_user()
+{
+    stk_client *client, *next_client;
+
+    client = stk_get_next(NULL);
+    while(client != NULL){
+        next_client = stk_get_next(client);
+        free(client);
+        client = next_client;
+    }
+}
+
 
 int stk_print_user(stk_client *client)
 {

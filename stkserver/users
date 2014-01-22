@@ -22,5 +22,21 @@
         "city": "Shenzhen",
         "phone": 109,
         "gender": 0
+    },
+   "Animy": {
+        "uid": 110,
+        "nickname": "Animy",
+        "pass": "110",
+        "city": "Shanghai",
+        "phone": 110,
+        "gender": 0
+    },
+   "Penny": {
+        "uid": 111,
+        "nickname": "Penny",
+        "pass": "111",
+        "city": "Xuzhou",
+        "phone": 111,
+        "gender": 0
     }
 }    

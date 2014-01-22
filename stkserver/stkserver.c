@@ -12,43 +12,26 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include <signal.h>
 
 #include "stk.h"
 
-int main(int argc, char argv[])
+void *stk_main(void *arg)
 {
-    int server_fd;
-    int conn_fd;
-    int bytes;
-    //int conn_fd[STK_MAX_CLIENTS];
+    int fd;
     char buf[STK_MAX_PACKET_SIZE] = {0};
-    stk_data *data = (stk_data *)malloc(sizeof(stk_data));
-    stk_client *client;
+    stk_client *client = NULL;
+    stk_data *data = NULL;
+    int bytes;
 
-    stk_init_user();
+    memcpy(&fd, arg, sizeof(fd));
 
-    if ((server_fd = stk_server_socket()) == -1){
-        printf("create stkserver socket error!exiting....\n");
-        exit(0);
-    }
+    data = (stk_data *)malloc(sizeof(stk_data));
+    signal(SIGUSR1, stk_handle_signal);
 
-    printf("====================================================\n");
-    printf("================= STK IM SERVER ====================\n");
-    printf("====================================================\n");
-
-    if((conn_fd = accept(server_fd, (struct sockaddr*)NULL, NULL)) == -1){
-        printf("accept socket error: %s(errno: %d)",strerror(errno),errno);
-    }
-
-    while(1){
-#if 0
-        if((conn_fd = accept(server_fd, (struct sockaddr*)NULL, NULL)) == -1){
-            printf("accept socket error: %s(errno: %d)",strerror(errno),errno);
-            continue;
-        }
-#endif
-        memset(buf, 0, sizeof(buf));
-        bytes = recv(conn_fd, buf, STK_MAX_PACKET_SIZE, 0);
+    while(1) {
+        bytes = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
         if (bytes == -1){
             printf("recv socket error: %s(errno: %d)",strerror(errno),errno);
             continue;
@@ -57,9 +40,13 @@ int main(int argc, char argv[])
             continue;
         } else if (bytes == 0){
             printf("peer socket has been shutdown.\n");
+            if (client != NULL) {
+				stk_user_offline(client);
+                client->stkc_state = STK_CLIENT_OFFLINE;
+            }
             break;
         } 
-
+	
         memset(data, 0, sizeof(stk_data));
         client = stk_parse_packet(buf, bytes, data);
         if (client != NULL ){
@@ -73,10 +60,10 @@ int main(int argc, char argv[])
 
         switch (data->cmd) {
         case STKP_CMD_REQ_LOGIN:
-            stk_reqlogin_ack(conn_fd, data->uid, buf);
+            stk_reqlogin_ack(fd, data->uid, buf);
             break;
         case STKP_CMD_LOGIN:
-            stk_login_ack(conn_fd, data->uid, buf);
+            stk_login_ack(fd, data->uid, buf);
             break;
         case STKP_CMD_KEEPALIVE:
             stk_keepalive_ack(client, buf);
@@ -94,15 +81,50 @@ int main(int argc, char argv[])
             stk_getinfo_ack(client, buf);
             break;
         case STKP_CMD_SEND_MSG:
-            stk_sendmsg_ack(client, buf);
+            stk_sendmsg_ack(client, buf, bytes);
             break;
         default:
             printf("Unknow STKP CMD, Drop it.");
             break;
         }
+    }
+	free(data);
+    close(fd);
+}
+
+int main(int argc, char argv[])
+{
+    int server_fd;
+    int conn_fd;
+    pthread_t tid;
+	int err;
+
+    stk_init_user();
+
+    if ((server_fd = stk_server_socket()) == -1){
+        printf("create stkserver socket error!exiting....\n");
+        exit(0);
+    }
+
+    printf("====================================================\n");
+    printf("================= STK IM SERVER ====================\n");
+    printf("====================================================\n");
+
+    while(1){
+        if((conn_fd = accept(server_fd, (struct sockaddr*)NULL, NULL)) == -1){
+            printf("accept socket error: %s(errno: %d)",strerror(errno),errno);
+            continue;
+        }
+
+        err = pthread_create(&tid, NULL, stk_main, (void *)&conn_fd);
+        if (err != 0) {
+            printf("can't create thread: %s\n", strerror(err));
+        }
 
     }
 
+    //pthread_join();
+    stk_clear_user();
     close(server_fd);
 
     return 0;

@@ -43,7 +43,10 @@
 
 #define STK_NULL_POINTER       -1
 
-#define STK_SELECT_TIMEOUT       10
+#define STK_SOCKET_ERROR        -1
+#define STK_SOCKET_CLOSED       -2
+
+#define STK_CLIENT_TIMEOUT    5
 
 typedef struct{
     unsigned int uid;
