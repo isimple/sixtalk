@@ -7,7 +7,7 @@
 
 CC = gcc
 OBJS = stkserver.o stkpacket.o stkuser.o cJSON.o
-LIBS = -lm
+LIBS = -lm -lpthread
 EXE = stkserver
 
 $(EXE): $(OBJS) 

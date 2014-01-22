@@ -40,7 +40,7 @@ int stk_init_head(stkp_head *head, unsigned short cmd, unsigned int uid)
     head->stkp_flag = 0x0;
 }
 
-int stk_login(int fd, char *buf, unsigned int uid)
+int stk_login(int fd, char *buf, int max_len, unsigned int uid)
 {
     stkp_head *head = NULL;
     int len;
@@ -87,7 +87,7 @@ int stk_login(int fd, char *buf, unsigned int uid)
     //printf("start to login to STK Server.\n");
 
     /* login */
-    memset(buf, 0, sizeof(buf));
+    memset(buf, 0, max_len);
     stk_init_head((stkp_head *)buf, STKP_CMD_LOGIN, uid);
 
     len = htons(STK_PASS_SIZE+STK_LOGIN_REVERSE_SIZE);
@@ -138,7 +138,7 @@ int stk_login(int fd, char *buf, unsigned int uid)
 
 }
 
-int stk_send_getprofile(int fd, char *buf, unsigned int uid, unsigned int n_uid, stk_buddy *buddy)
+int stk_send_getprofile(int fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
@@ -149,7 +149,7 @@ int stk_send_getprofile(int fd, char *buf, unsigned int uid, unsigned int n_uid,
         return -1;
     }
 
-    memset(buf, 0, sizeof(buf));
+    memset(buf, 0, max_len);
     stk_init_head((stkp_head *)buf, STKP_CMD_GET_INFO, uid);
 
     tmp = buf+sizeof(stkp_head);
@@ -214,7 +214,7 @@ int stk_send_getprofile(int fd, char *buf, unsigned int uid, unsigned int n_uid,
     }
 }
 
-int stk_send_getbuddylist(int fd, char *buf, unsigned int uid)
+int stk_send_getbuddylist(int fd, char *buf, int max_len, unsigned int uid)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
@@ -229,7 +229,7 @@ int stk_send_getbuddylist(int fd, char *buf, unsigned int uid)
         return -1;
     }
 
-    memset(buf, 0, sizeof(buf));
+    memset(buf, 0, max_len);
     stk_init_head((stkp_head *)buf, STKP_CMD_GET_USER, uid);
 
     len = htons(STK_DATA_ZERO_LENGTH);
@@ -290,15 +290,113 @@ int stk_send_getbuddylist(int fd, char *buf, unsigned int uid)
         while (buddy_num--) {
             next_buddy = stk_get_next(next_buddy);
             memset(&buddy, 0, sizeof(stk_buddy));
-			stk_send_getprofile(fd, buf, uid, next_buddy->uid, &buddy);
-			stk_update_buddy(&buddy);
+            if (stk_send_getprofile(fd, buf, max_len, uid, next_buddy->uid, &buddy) != -1) {
+                stk_update_buddy(&buddy);
+            }
         }
+        return 0;
     }
 
 }
 
-int stk_handle_msg(int fd, char *buf)
+
+int stk_send_msg(int fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int n_uid)
 {
+    stkp_head *head = NULL;
+    char *tmp = NULL;
+    unsigned int uid_n;
+    int len;
+
+    if (buf == NULL) {
+        return -1;
+    }
+
+    memset(buf, 0, max_len);
+    stk_init_head((stkp_head *)buf, STKP_CMD_SEND_MSG, uid);
+
+    tmp = buf+sizeof(stkp_head);
+    
+    len = htons(STK_ID_LENGTH+data_len);
+    memcpy(tmp-2, &len, 2);
+
+    uid_n = htonl(n_uid);
+    memcpy(tmp, &uid_n, STK_ID_LENGTH);
+
+	tmp += STK_ID_LENGTH;
+    memcpy(tmp, data, data_len);
+
+    len = STK_ID_LENGTH+data_len+sizeof(stkp_head);
+    buf[len] = STKP_PACKET_TAIL;
+    len++;
+
+    if (len != send(fd, buf, len, 0)) {
+        printf("send msg error: %s(errno: %d)\n", strerror(errno), errno);
+        return -1;
+    }
+}
+
+
+int stk_handle_msg(client_config *client, char *buf)
+{
+    stkp_head *head = NULL;
+    char *tmp = NULL;
+    unsigned int uid;
+    int len;
+
+    len = recv(client->fd, buf, STK_MAX_PACKET_SIZE, 0);
+    if (len == -1){
+        printf("recv socket error: %s(errno: %d)",strerror(errno),errno);
+        return STK_SOCKET_ERROR;
+    } else if (len == 0) {
+        printf("\n\nSTK Server close the socket, exiting...\n\n");
+        return STK_SOCKET_CLOSED;
+    }
+
+    head = (stkp_head *)buf;
+
+    if (head->stkp_magic != htons(STKP_MAGIC) 
+        || head->stkp_version != htons(STKP_VERSION)
+        || !STKP_TEST_FLAG(head->stkp_flag))
+    {
+        printf("#5. bad msg, drop packet.\n");
+        return -1;
+    } else {
+        unsigned short size;
+        unsigned short cmd;
+        char data[4096] = {0};
+        stk_buddy *buddy;
+
+        cmd = ntohs(head->stkp_cmd);
+        switch (cmd) {
+        case STKP_CMD_KEEPALIVE:
+            //stk_keepalive_ack(client, buf);
+            break;
+        case STKP_CMD_SEND_MSG:
+            tmp = buf + sizeof(stkp_head);
+            memcpy(&size, tmp-2, 2);
+
+            size = ntohs(size) - STK_ID_LENGTH;
+            tmp += STK_ID_LENGTH;
+            memcpy(data, tmp, size);
+            data[size] = '\0';
+            uid = ntohl(head->stkp_uid);
+            buddy = stk_find_buddy(uid);
+
+            if (buddy == NULL) 
+                printf("Bad buddy!!\n");
+            else {
+            fflush(stdout);
+			printf("\n====================================================\n");
+			printf("%s talk to %s: %s\n", buddy->nickname, client->nickname, data);
+			printf("====================================================\n");
+			fflush(stdout);
+            }
+            break;
+        default:
+            printf("Bad STKP CMD, Drop it.");
+            break;
+        }
+    }
     return 0;
 }
 

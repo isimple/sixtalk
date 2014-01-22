@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <signal.h>
 
 #include "stk.h"
 
@@ -144,6 +145,7 @@ int stk_login_ack(int fd, unsigned int uid, char *buf)
             *tmp = STK_LOGIN_SUCCESS;
             client = stk_find_user(uid);
             client->stkc_fd = fd;
+            client->stkc_tid= pthread_self();
             client->stkc_state = STK_CLIENT_ONLINE;
             stk_print_user(client);
         } else {
@@ -188,7 +190,7 @@ int stk_getuser_ack(stk_client *client, char *buf)
     num = stk_get_usernum()-1;
     client_next = client;
     while (num--) {
-        client_next = list_entry((client_next->list.next), stk_client, list);
+        client_next = stk_get_next(client_next);
         uid = client_next->stkc_uid;
         uid = htonl(uid);
         memcpy(tmp, &uid, STK_ID_LENGTH);
@@ -263,8 +265,82 @@ int stk_getinfo_ack(stk_client *client, char *buf)
     }
 }
 
-int stk_sendmsg_ack(stk_client *client, char *buf)
+int stk_sendmsg_ack(stk_client *client, char *buf, int bytes)
 {
+    stkp_head *head = (stkp_head *)buf;
+    stk_client *user;
+    char *tmp = NULL;
+    char *data = NULL;
+    unsigned int uid;
+    unsigned short len;
+    int ret;
 
+    tmp = buf + sizeof(stkp_head);
+
+    memcpy(&uid, tmp, STK_ID_LENGTH);
+    uid = ntohl(uid);
+    user = stk_find_user(uid);
+    if (user == NULL) {
+        /* msg to a unknow user, I beleive it's not impossible */
+        return 0;
+    } else if (user->stkc_state == STK_CLIENT_OFFLINE){
+        /* user offline, need to do something? */
+        return 0;
+    } else if (user->stkc_state == STK_CLIENT_ONLINE){
+        data = (char *)malloc(bytes);
+        memcpy(data, buf, bytes);
+        //user->stkc_data->uid = ntohl(head->stkp_uid);
+        user->stkc_data->cmd = STKP_CMD_SEND_MSG;
+        user->stkc_data->data = data;
+        user->stkc_data->len = bytes;
+        pthread_kill(user->stkc_tid, SIGUSR1);
+    }
+}
+
+void stk_handle_signal(int signal)
+{
+    pthread_t tid;
+    char buf[STK_MAX_PACKET_SIZE] = {0};
+    stk_client *client = NULL;
+    stkp_head *head = NULL;
+    unsigned short cmd;
+    char *tmp = NULL;
+    int len;
+
+    if(signal != SIGUSR1) {
+        return;
+    }
+
+    tid = pthread_self();
+    client = stk_get_user_by_tid(tid);
+
+	if (client == NULL) {
+        printf("What happened, it's impossible...\n");
+        return;
+	}
+
+    if (client->stkc_state == STK_CLIENT_OFFLINE) {
+        printf("Oops, STK Client not online, hope not go here...\n");
+        return;
+    }
+
+    len = client->stkc_data->len;
+    memcpy(buf, client->stkc_data->data, len);
+
+    /* Any usage? */
+    cmd = client->stkc_data->cmd;
+
+    /* stk_sendmsg_ack malloc, free here */
+    free(client->stkc_data->data);
+
+    head = (stkp_head *)buf;
+    head->stkp_flag = 0x1;
+    head->stkp_token = htonl(client->stkc_token);
+
+    if (len != send(client->stkc_fd, buf, len, 0)) {
+        printf("send msg error: %s(errno: %d)\n", strerror(errno), errno);
+        return;
+    }
+    return;
 }
 

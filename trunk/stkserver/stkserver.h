@@ -36,6 +36,8 @@
 #define STK_GENDER_BOY         1
 #define STK_GENDER_GIRL        0
 
+#define STK_ERR_TID -1
+
 #define STK_NULL_POINTER       -1
 
 typedef struct{
@@ -48,6 +50,7 @@ typedef struct{
 typedef struct{
     struct list_head list;
     int stkc_fd;
+    pthread_t stkc_tid;
     stk_data *stkc_data;
     int stkc_state;
     unsigned int  stkc_token;

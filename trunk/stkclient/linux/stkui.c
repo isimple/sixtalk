@@ -33,6 +33,58 @@ void stk_usage()
     fflush(stdout);
 }
 
+int stk_chat_buddy(int fd, client_config *client)
+{
+    stk_buddy *buddy = NULL;
+    unsigned short buddy_num;
+    char buf[STK_MAX_PACKET_SIZE] = {0};
+    char line[STK_STDIN_SIZE] = {0};
+    unsigned int uid;
+    int len;
+
+input:
+    buddy_num = stk_get_buddynum();
+    printf("====================================================\n");
+    while (buddy_num--) {
+        buddy = stk_get_next(buddy);
+        printf("%d(%s)\t", buddy->uid, buddy->nickname);
+    }
+    printf("\n====================================================\n");
+    printf("choose a friend: ");
+
+    fflush(stdout);
+
+    len = read(fd, line, STK_STDIN_SIZE);
+    line[len-1] = '\0';
+
+    uid = atoi(line);
+    buddy = NULL;
+    buddy = stk_find_buddy(uid);
+    if (buddy == NULL) {
+       printf("====================================================\n");
+       printf("!!! please input the right UserID !!!\n");
+       printf("====================================================\n");
+       goto input;
+    }
+
+    while (1) {
+       printf("====================================================\n");
+       printf("%s talk to %s: ", client->nickname, buddy->nickname);
+       fflush(stdout);
+
+       memset(line, 0, sizeof(line));
+       len = read(fd, line, STK_STDIN_SIZE);
+       line[len-1] = '\0';
+
+       if (!strcmp(line, "quit")) {
+           break;
+       }
+
+       stk_send_msg(client->fd, buf, STK_STDIN_SIZE, line, len-1, client->uid, buddy->uid);
+    }
+}
+
+
 void stk_hanle_input(int fd, client_config *client)
 {
     int len;
@@ -53,7 +105,7 @@ void stk_hanle_input(int fd, client_config *client)
     } else if (!strcmp(line, "list")) {
         stk_print_buddylist();
     } else if (!strcmp(line, "chat")) {
-        
+        stk_chat_buddy(fd, client);
     } else if (!strcmp(line, "exit")) {
         printf("\n### exiting STK Client......\n\n");
         fflush(stdout);

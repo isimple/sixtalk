@@ -35,8 +35,8 @@ int stk_keepalive_ack(stk_client *client, char *buf);
 int stk_getuser_ack(stk_client *client, char *buf);
 int stk_getonlineuser_ack(stk_client *client, char *buf);
 int stk_getinfo_ack(stk_client *client, char *buf);
-int stk_sendmsg_ack(stk_client *client, char *buf);
-
+int stk_sendmsg_ack(stk_client *client, char *buf, int bytes);
+void stk_handle_signal(int signal);
 
 
 #endif /* _STK_H_ */

@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     char sendbuf[STK_MAX_PACKET_SIZE] = {0};
     stk_buddy buddy;
     struct sockaddr_in servaddr;
-    int bytes;
+    int len;
     fd_set rset, wset;
     int max_fd;
     struct timeval to;
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
     memset(sendbuf, 0, sizeof(sendbuf));
 
-    ret = stk_login(client.fd, sendbuf, client.uid);
+    ret = stk_login(client.fd, sendbuf, STK_MAX_PACKET_SIZE, client.uid);
     if (ret == STK_CLIENT_LOGIN_ERROR){
         printf("======== STK Client [%d] login failed ========\n", client.uid);
         exit(0);
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     }
 
     memset(&buddy, 0 ,sizeof(stk_buddy));
-    ret = stk_send_getprofile(client.fd, sendbuf,  client.uid, client.uid, &buddy);
+    ret = stk_send_getprofile(client.fd, sendbuf, STK_MAX_PACKET_SIZE, client.uid, client.uid, &buddy);
     if (ret == -1){
         printf("======== STK Client [%d] get profile failed ========\n", client.uid);
         exit(0);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
         client.gender = buddy.gender;
     }
 
-    ret = stk_send_getbuddylist(client.fd, sendbuf, client.uid);
+    ret = stk_send_getbuddylist(client.fd, sendbuf, STK_MAX_PACKET_SIZE, client.uid);
     if (ret == -1){
         printf("======== STK Client [%d] get buddy list failed ========\n", client.uid);
         exit(0);
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
         FD_SET(client.fd,&rset);
 
         max_fd = (input_fd > client.fd) ? input_fd : client.fd;
-        to.tv_sec  = STK_SELECT_TIMEOUT;
+        to.tv_sec  = STK_CLIENT_TIMEOUT;
         to.tv_usec = 0;
 
         ret = select(max_fd+1, &rset, &wset, NULL, &to);
@@ -121,12 +121,11 @@ int main(int argc, char *argv[])
             }
             if (FD_ISSET(client.fd, &rset))
             {
-                stk_handle_msg(client.fd);
+                if (stk_handle_msg(&client, recvbuf) == STK_SOCKET_CLOSED)
+                    break;
             }
         }
     }
-
     close(client.fd);
-
     return 0;
 }
