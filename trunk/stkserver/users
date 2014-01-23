@@ -7,21 +7,21 @@
         "phone": 107,
         "gender": 1
     },
-    "Yellow": {
+    "Tom": {
         "uid": 108,
-        "nickname": "Yellow",
+        "nickname": "Tom",
         "pass": "108",
         "city": "Beijing",
         "phone": 108,
         "gender": 1
     },
-    "Mary": {
+    "Jason": {
         "uid": 109,
-        "nickname": "Mary",
+        "nickname": "Jason",
         "pass": "109",
         "city": "Shenzhen",
         "phone": 109,
-        "gender": 0
+        "gender":2 
     },
    "Animy": {
         "uid": 110,
@@ -29,7 +29,7 @@
         "pass": "110",
         "city": "Shanghai",
         "phone": 110,
-        "gender": 0
+        "gender": 2 
     },
    "Penny": {
         "uid": 111,
@@ -37,6 +37,6 @@
         "pass": "111",
         "city": "Xuzhou",
         "phone": 111,
-        "gender": 0
+        "gender": 2
     }
 }    
