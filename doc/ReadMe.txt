@@ -24,7 +24,7 @@ stkp_example.pcang是实例交互报文
 为了让Wireshark支持STK Protocol
 可将插件stkp.lua文件放到Wireshark安装目录下
 在init.lua中最后添加下面这句话
-dofile('stkp.lua')
+dofile(DATA_DIR.."stkp.lua")
 
 Wireshark插件的编写可参考如下网页
 http://yoursunny.com/t/2008/Wireshark-Lua-dissector/

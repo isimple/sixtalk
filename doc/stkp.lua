@@ -2,7 +2,7 @@ do
 	local p_Stkp = Proto("Stkp","SixTalk Protocol")
 	local f_magic = ProtoField.string("Stkp.magic","Magic")
 	local f_version = ProtoField.uint16("Stkp.version","Version",base.HEX)
-	local f_cmd = ProtoField.uint16("Stkp.cmd","Command",base.HEX)
+	local f_cmd = ProtoField.uint16("Stkp.cmd","Command",base.HEX, { [1]="Request Login Token", [2]="Login", [3]="Keep Alive", [4]="Login Out", [5]="Get Buddys", [6]="Get Online Buddys", [7]="Get Buddy Info", [8]="Send Message", [9]="Reply Message" }) 
 	local f_sid = ProtoField.uint16("Stkp.sid","Session ID")
 	local f_uid = ProtoField.uint32("Stkp.uid","STK ID")
 	local f_token = ProtoField.uint32("Stkp.token","Token",base.HEX)
@@ -22,7 +22,7 @@ do
 	local f_nickname = ProtoField.string("Stkp.nickname","Nickname")
 	local f_city = ProtoField.string("Stkp.city","City")
 	local f_phone = ProtoField.uint32("Stkp.phone","Phone")
-	local f_gender = ProtoField.uint32("Stkp.gender","Gender",base.HEX,{ [0]="Boy", [1]="Girl", [2]="Unknow"})
+	local f_gender = ProtoField.uint32("Stkp.gender","Gender",base.HEX,{ [0]="Unknow", [1]="Boy", [2]="Girl"})
 
 	local f_chatbuddy = ProtoField.uint32("Stkp.chatbuddy","Chat buddy ID")
 	local f_msg = ProtoField.string("Stkp.msg","Chat Message")

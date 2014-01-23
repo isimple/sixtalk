@@ -18,7 +18,7 @@
 #define STK_CITY_SIZE          16
 #define STK_LOGIN_REVERSE_SIZE 64
 
-#define STK_DATA_ZERO_LENGTH 0
+#define STK_DATA_ZERO_LENGTH   0
 
 #define STK_DEFAULT_SIZE       64
 
@@ -26,15 +26,16 @@
 #define STK_PHONE_LENGTH       4
 #define STK_GENDER_LENGTH      1
 
-#define STK_ID_NUM_LENGTH 2
+#define STK_ID_NUM_LENGTH      2
 
 #define STK_USER_FILE          "users"
 
 #define STK_CLIENT_OFFLINE     0
 #define STK_CLIENT_ONLINE      1
 
+#define STK_GENDER_UNKNOWN     0
 #define STK_GENDER_BOY         1
-#define STK_GENDER_GIRL        0
+#define STK_GENDER_GIRL        2
 
 #define STK_ERR_TID -1
 
