@@ -1,0 +1,35 @@
+# Project: STKClient
+# Makefile created by Dev-C++ 4.9.9.2
+
+CPP  = g++.exe
+CC   = gcc.exe
+OBJ  = stkclient.o stkpacket.o stkbuddy.o stkutil.o
+LINKOBJ  = stkclient.o stkpacket.o stkbuddy.o stkutil.o
+LIBS =  -L"C:/Dev-Cpp/lib" $(shell pkg-config --libs gtk+-2.0) -lws2_32   
+INCS =  -I"C:/Dev-Cpp/include" 
+CFLAGS = $(INCS) $(shell pkg-config --cflags gtk+-2.0)  
+BIN  = STKClient.exe
+RM = rm -f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before STKClient.exe all-after
+
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o "STKClient.exe" $(LIBS)
+
+stkclient.o: stkclient.c
+	$(CC) -c stkclient.c -o stkclient.o $(CFLAGS)
+
+stkpacket.o: stkpacket.c
+	$(CC) -c stkpacket.c -o stkpacket.o $(CFLAGS)
+
+stkbuddy.o: stkbuddy.c
+	$(CC) -c stkbuddy.c -o stkbuddy.o $(CFLAGS)
+
+stkutil.o: stkutil.c
+	$(CC) -c stkutil.c -o stkutil.o $(CFLAGS)
