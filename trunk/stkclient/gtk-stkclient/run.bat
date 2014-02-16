@@ -1,2 +1,2 @@
 make -f Makefile.win
-STKClient.exe
+stkclient.exe
