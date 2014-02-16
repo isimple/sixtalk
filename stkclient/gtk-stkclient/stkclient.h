@@ -22,6 +22,7 @@
 #define STK_IPADDR_LENGTH      16
 #define STK_DATA_ZERO_LENGTH   0
 
+#define STK_MAX_SIZE           4096
 #define STK_DEFAULT_SIZE       64
 
 #define STK_ID_LENGTH          4
@@ -66,12 +67,24 @@ typedef struct{
 }client_config;
 
 typedef struct{
+    GtkWidget *window;
+    GtkWidget *show_scrolled,*input_scrolled;
+    GtkWidget *show_view,*input_view;
+    GtkTextBuffer *show_buffer,*input_buffer;
+    GtkWidget *send_button,*close_button;
+    GtkWidget *hbox,*vbox;
+}chat_widgets;
+
+typedef struct{
     unsigned int uid;
     unsigned char nickname[STK_NICKNAME_SIZE];
     unsigned char city[STK_CITY_SIZE];
     unsigned int phone;
     unsigned char gender;
     struct list_head list;
+    int state;
+    GtkWidget *menu;
+    chat_widgets chat;
 }stk_buddy;
 
 #endif /* _STKCLIENT_H_ */
