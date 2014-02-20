@@ -387,65 +387,66 @@ int stk_send_msg(int fd, char *buf, int max_len, char *data, int data_len, unsig
 }
 
 
-int stk_handle_msg(client_config *client, char *buf)
+int stk_recv_msg(client_config *client)
 {
+    unsigned char recvbuf[STK_MAX_PACKET_SIZE] = {0};
     stkp_head *head = NULL;
     char *tmp = NULL;
     unsigned int uid;
     int len;
 
-    len = recv(client->fd, buf, STK_MAX_PACKET_SIZE, 0);
-    if (len == -1){
-        stk_print("recv socket error: %s(errno: %d)",strerror(errno),errno);
-        return STK_SOCKET_ERROR;
-    } else if (len == 0) {
-        stk_print("\n\nSTK Server close the socket, exiting...\n\n");
-        return STK_SOCKET_CLOSED;
-    }
+    while (1) {
+        len = recv(client->fd, recvbuf, STK_MAX_PACKET_SIZE, 0);
+        if (len == -1){
+            stk_print("recv socket error: %s(errno: %d)",strerror(errno),errno);
+            return STK_SOCKET_ERROR;
+        } else if (len == 0) {
+            stk_print("\n\nSTK Server close the socket, exiting...\n\n");
+            return STK_SOCKET_CLOSED;
+        }
 
-    head = (stkp_head *)buf;
+        head = (stkp_head *)recvbuf;
 
-    if (head->stkp_magic != htons(STKP_MAGIC) 
-        || head->stkp_version != htons(STKP_VERSION)
-        || !STKP_TEST_FLAG(head->stkp_flag))
-    {
-        stk_print("#5. bad msg, drop packet.\n");
-        return -1;
-    } else {
-        unsigned short size;
-        unsigned short cmd;
-        char data[4096] = {0};
-        stk_buddy *buddy;
+        if (head->stkp_magic != htons(STKP_MAGIC) 
+            || head->stkp_version != htons(STKP_VERSION)
+            || !STKP_TEST_FLAG(head->stkp_flag))
+        {
+            stk_print("#5. bad msg, drop packet.\n");
+            return -1;
+        } else {
+            unsigned short size;
+            unsigned short cmd;
+            char data[STK_MAX_SIZE] = {0};
+            stk_buddy *buddy;
 
-        cmd = ntohs(head->stkp_cmd);
-        switch (cmd) {
-        case STKP_CMD_KEEPALIVE:
-            //stk_keepalive_ack(client, buf);
-            break;
-        case STKP_CMD_SEND_MSG:
-            tmp = buf + sizeof(stkp_head);
-            memcpy(&size, tmp-2, 2);
+            cmd = ntohs(head->stkp_cmd);
+            switch (cmd) {
+            case STKP_CMD_KEEPALIVE:
+                //stk_keepalive_ack(client, buf);
+                break;
+            case STKP_CMD_SEND_MSG:
+                tmp = recvbuf + sizeof(stkp_head);
+                memcpy(&size, tmp-2, 2);
 
-            size = ntohs(size) - STK_ID_LENGTH;
-            tmp += STK_ID_LENGTH;
-            memcpy(data, tmp, size);
-            data[size] = '\0';
-            uid = ntohl(head->stkp_uid);
-            buddy = stk_find_buddy(uid);
+                size = ntohs(size) - STK_ID_LENGTH;
+                tmp += STK_ID_LENGTH;
+                memcpy(data, tmp, size);
+                data[size] = '\0';
+                uid = ntohl(head->stkp_uid);
+                buddy = stk_find_buddy(uid);
 
-            if (buddy == NULL) 
-                stk_print("Bad buddy!!\n");
-            else {
-                fflush(stdout);
-                g_print("\n====================================================\n");
-                stk_print("%s talk to %s: %s\n", buddy->nickname, client->nickname, data);
-                stk_print("====================================================\n");
-                fflush(stdout);
+                if (buddy == NULL) 
+                    stk_print("Bad buddy!!\n");
+                else {
+                    if (!stk_add_msg(buddy, data, size)) {
+                        notify_buddy(buddy);
+                    }
+                }
+                break;
+            default:
+                stk_print("Bad STKP CMD, Drop it.");
+                break;
             }
-            break;
-        default:
-            stk_print("Bad STKP CMD, Drop it.");
-            break;
         }
     }
     return 0;

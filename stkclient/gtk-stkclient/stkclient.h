@@ -66,7 +66,15 @@ typedef struct{
     unsigned char serverip[STK_IPADDR_LENGTH];
 }client_config;
 
+struct chat_message{
+    int msg_len;
+    char *timestamp;
+    char *msg;
+    struct chat_message *next;
+};
+
 typedef struct{
+    int show;
     GtkWidget *window;
     GtkWidget *show_scrolled,*input_scrolled;
     GtkWidget *show_view,*input_view;
@@ -83,8 +91,11 @@ typedef struct{
     unsigned char gender;
     struct list_head list;
     int state;
+    GdkPixbuf *pixbuf;
     GtkWidget *menu;
     chat_widgets chat;
+    int msg_num;
+    struct chat_message *chatmsg;
 }stk_buddy;
 
 #endif /* _STKCLIENT_H_ */
