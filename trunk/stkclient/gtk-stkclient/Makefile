@@ -8,7 +8,7 @@
 CC   = gcc
 OBJ  = stkclient.o stkpacket.o stkbuddy.o stkutil.o
 LINKOBJ  = stkclient.o stkpacket.o stkbuddy.o stkutil.o
-LIBS =  $(shell pkg-config --libs gtk+-2.0)
+LIBS =  $(shell pkg-config --libs gtk+-2.0) -lgthread-2.0
 CFLAGS = -D_LINUX_ $(shell pkg-config --cflags gtk+-2.0)
 BIN = stkclient
 RM = rm -f

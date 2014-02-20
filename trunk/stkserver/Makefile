@@ -6,23 +6,32 @@
 #
 
 CC = gcc
-OBJS = stkserver.o stkpacket.o stkuser.o cJSON.o
+OBJ = stkserver.o stkpacket.o stkuser.o cJSON.o
+LINKOBJ = stkserver.o stkpacket.o stkuser.o cJSON.o
 LIBS = -lm -lpthread
-EXE = stkserver
+CFLAGS = 
+BIN = stkserver
+RM = rm -f
 
-$(EXE): $(OBJS) 
-	$(CC) -o $@ $(OBJS) $(LIBS)
+.PHONY: all all-before all-after clean clean-custom
 
-clean: 
-	rm -f *.o *.d
-	rm -f $(EXE)
-	
-#
-# Include the rule for making dependency files.
-# The '-' in front of the second include suppresses
-# error messages when make cannot find the .d files.
-# It will just regenerate them.
-# See Section 4.14 of Gnu Make.
-#
+all: all-before $(BIN) all-after
 
--include $(OBJS:.o=.d)
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+stkserver.o: stkserver.c
+	$(CC) -c stkserver.c -o stkserver.o $(CFLAGS)
+
+stkpacket.o: stkpacket.c
+	$(CC) -c stkpacket.c -o stkpacket.o $(CFLAGS)
+
+stkuser.o: stkuser.c
+	$(CC) -c stkuser.c -o stkuser.o $(CFLAGS)
+
+cJSON.o: cJSON.c
+	$(CC) -c cJSON.c -o cJSON.o $(CFLAGS)

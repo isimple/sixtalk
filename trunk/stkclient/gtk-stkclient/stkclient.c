@@ -19,6 +19,12 @@
 #endif
 
 #include "stk.h"
+#include <gdk/gdkkeysyms.h>
+
+#define USE_GTK_THREAD
+
+#define STK_MAIN_ICON_FILE "img.png"
+#define STK_BUDDY_ICON_FILE "buddy.png"
 
 enum
 {
@@ -36,7 +42,10 @@ typedef struct{
 
 typedef struct{
     GtkWidget *mainw;
+    GtkStatusIcon *tray;
     GtkWidget *treev;
+    GtkWidget *hfix;
+    GtkWidget *image;
     LoginWidget loginw;
 }StkWidgets;
 
@@ -44,10 +53,18 @@ StkWidgets stkwidgets;
 client_config client;
 unsigned char sendbuf[STK_MAX_PACKET_SIZE] = {0};
 
+static int msg_in = 0;
+
+/*
+ * g_object_get_data g_object_set_data
+ *
+ *
+ */
+
 void clean_login_window()
 {
-//    GList *list = gtk_container_get_children(GTK_CONTAINER(stkwidgets.loginw));
-//    gtk_widget_destroy();
+    //GList *list = gtk_container_get_children(GTK_CONTAINER(stkwidgets.loginw));
+    //gtk_widget_destroy();
     gtk_widget_destroy(stkwidgets.loginw.layout);
 
 }
@@ -78,14 +95,14 @@ static void setup_tree_view (GtkWidget *tree)
     gtk_tree_view_append_column(GTK_TREE_VIEW (tree), column);
 }
 
-static void add_to_tree(GtkWidget *tree, const gchar *str)
+static void add_to_tree(GtkWidget *tree, GdkPixbuf *pixbuf, const char *str)
 {
     GtkListStore *store;
     GtkTreeIter iter;
-    GdkPixbuf *pixbuf;
+    //GdkPixbuf *pixbuf;
 
     store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(tree)));
-    pixbuf = gdk_pixbuf_new_from_file("buddy.png", NULL);
+    //pixbuf = gdk_pixbuf_new_from_file(STK_BUDDY_ICON_FILE, NULL);
 
     gtk_list_store_append(store, &iter);
     gtk_list_store_set(store, &iter, STK_PIXBUF_COL, pixbuf, STK_TEXT_COL, str, -1);
@@ -95,8 +112,8 @@ static void add_to_tree(GtkWidget *tree, const gchar *str)
 static void show_buddy_info(GtkWidget *widget, gpointer data)
 {
     stk_buddy *buddy = (stk_buddy *)data;
-    gchar buf[STK_MAX_SIZE] = {0};
-    gchar tmp[STK_DEFAULT_SIZE] = {0};
+    char buf[STK_MAX_SIZE] = {0};
+    char tmp[STK_DEFAULT_SIZE] = {0};
 
     sprintf(tmp, "Uid:\t\t\t%d\n", buddy->uid);
 	strcat(buf, tmp);
@@ -112,22 +129,32 @@ static void show_buddy_info(GtkWidget *widget, gpointer data)
     stk_message("User", buf);
 }
 
-static void close_chat_window(GtkWidget *window)
+static int close_chat_window(GtkWidget *window, gpointer data)
 {
-    gtk_widget_hide(window);
+    stk_buddy *buddy = (stk_buddy *)data;
+
+    buddy->chat.show = FALSE;
+    gtk_widget_destroy(buddy->chat.window);
+
+    return TRUE;
 }
 
-static void move_send_text(stk_buddy *buddy, gchar *text)
+static void show_send_text(stk_buddy *buddy, char *text)
 {
     GtkTextIter start,end;
+    char buf[STK_MAX_SIZE] = {0};
+    char tmp[STK_MAX_SIZE] = {0};
 
     /* clean input text area */
     gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buddy->chat.input_buffer),&start,&end);
     gtk_text_buffer_delete(GTK_TEXT_BUFFER(buddy->chat.input_buffer),&start,&end);
 
+    stk_get_timestamp(tmp);
+    sprintf(buf, "%s(%d) %s\n    ", client.nickname, client.uid, tmp);
+
     /* show in show text area */
     gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buddy->chat.show_buffer),&start,&end);
-    gtk_text_buffer_insert(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &end, "I: ", 3);
+    gtk_text_buffer_insert(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &end, buf, strlen(buf));
     gtk_text_buffer_insert(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &end, text, strlen(text));
     gtk_text_buffer_insert(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &end, "\n", 1);
 }
@@ -136,13 +163,13 @@ static gboolean send_msg(GtkWidget *widget, gpointer data)
 {
     stk_buddy *buddy = (stk_buddy *)data;
     GtkTextIter start,end;
-    gchar *text;
+    char *text;
     int len;
 
     if(0){//STK_CLIENT_OFFLINE == buddy->state) {
         stk_message(NULL, "Buddy offline...\n");
     } else {
-        text = (gchar *)malloc(STK_MAX_SIZE);
+        text = (char *)malloc(STK_MAX_SIZE);
         if(text == NULL)
         {
             stk_message(NULL, "malloc failed\n");
@@ -157,7 +184,7 @@ static gboolean send_msg(GtkWidget *widget, gpointer data)
         if(strcmp(text,"")!=0)
         {
             stk_send_msg(client.fd, sendbuf, STK_MAX_SIZE, text, strlen(text), client.uid, buddy->uid);
-            move_send_text(buddy, text);
+            show_send_text(buddy, text);
         } else {
             stk_message("message should not NULL...\n");
         }
@@ -166,10 +193,10 @@ static gboolean send_msg(GtkWidget *widget, gpointer data)
     return 0;
 }
 
-static void show_chat_window(GtkWidget *widget, gpointer data)
+static void init_chat_window(stk_buddy *buddy)
 {
-    stk_buddy *buddy = (stk_buddy *)data;
-    gchar buf[STK_DEFAULT_SIZE] = {0};
+    char buf[STK_DEFAULT_SIZE] = {0};
+    GtkAccelGroup *gag;
 
     sprintf(buf, "Chat With %s", buddy->nickname);
     buddy->chat.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -178,7 +205,7 @@ static void show_chat_window(GtkWidget *widget, gpointer data)
     gtk_window_set_default_size(GTK_WINDOW(buddy->chat.window), 500, 380);
 
 	/* "quit" button */
-    g_signal_connect(GTK_OBJECT(buddy->chat.window), "destroy", G_CALLBACK(close_chat_window), NULL);
+    g_signal_connect(GTK_OBJECT(buddy->chat.window), "destroy", G_CALLBACK(close_chat_window), (gpointer)buddy);
 
     buddy->chat.send_button = gtk_button_new_with_label("Send");
     buddy->chat.close_button = gtk_button_new_with_label("Close");
@@ -192,6 +219,7 @@ static void show_chat_window(GtkWidget *widget, gpointer data)
 
     /* set textbox to diseditable */
     gtk_text_view_set_editable(GTK_TEXT_VIEW(buddy->chat.show_view), FALSE);
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(buddy->chat.input_view), TRUE);
 
     /* scroll window */
     buddy->chat.show_scrolled = gtk_scrolled_window_new(NULL, NULL);
@@ -209,7 +237,7 @@ static void show_chat_window(GtkWidget *widget, gpointer data)
     buddy->chat.vbox = gtk_vbox_new(FALSE, 2);
 
     /* click close to call close_chat_window*/
-    g_signal_connect(GTK_OBJECT(buddy->chat.close_button),"clicked",GTK_SIGNAL_FUNC(close_chat_window),NULL);
+    g_signal_connect(GTK_OBJECT(buddy->chat.close_button), "clicked", G_CALLBACK(close_chat_window), (gpointer)buddy);
 
     /* create window */
     gtk_box_pack_end(GTK_BOX(buddy->chat.hbox),buddy->chat.close_button, FALSE, FALSE, 2);
@@ -219,13 +247,110 @@ static void show_chat_window(GtkWidget *widget, gpointer data)
     gtk_box_pack_start(GTK_BOX(buddy->chat.vbox),buddy->chat.hbox, FALSE, FALSE, 2);
 
     gtk_container_add(GTK_CONTAINER(buddy->chat.window), buddy->chat.vbox);
-	
-    /* click send button ,then call send_msg*/
-    gtk_signal_connect(GTK_OBJECT(buddy->chat.send_button),"clicked",G_CALLBACK(send_msg),(gpointer)buddy);
 
-    gtk_widget_show_all(buddy->chat.window);
+    /* set input as focus */
+    gtk_widget_set_can_focus(buddy->chat.input_view, GTK_CAN_FOCUS);
+    gtk_widget_grab_focus (buddy->chat.input_view);
+
+    /* click send button ,then call send_msg*/
+    g_signal_connect(GTK_OBJECT(buddy->chat.send_button), "clicked", G_CALLBACK(send_msg), (gpointer)buddy);
+
+    gag = gtk_accel_group_new();
+    gtk_window_add_accel_group(GTK_WINDOW(buddy->chat.window), gag);
+    gtk_widget_add_accelerator(buddy->chat.send_button, "clicked", gag, GDK_Return, 0, GTK_ACCEL_VISIBLE); /* GDK_KEY_Return */
+
+    buddy->chat.show = TRUE;
+    //gtk_widget_hide_all(buddy->chat.window);
 
 }
+
+void show_chat_window(GtkWidget *widget, gpointer data)
+{
+    stk_buddy *buddy = (stk_buddy *)data;
+
+    if (!buddy->chat.show)
+        init_chat_window(buddy);
+    gtk_widget_show_all(buddy->chat.window);
+}
+
+gboolean show_chat_text(stk_buddy *buddy)
+{
+    GtkTextIter start,end;
+    char buf[STK_DEFAULT_SIZE] = {0};
+    char timestamp[STK_DEFAULT_SIZE] = {0};
+    char msg[STK_MAX_SIZE] = {0};
+    int msg_len;
+
+    if (!buddy->chat.show)
+        init_chat_window(buddy);
+
+    while (buddy->msg_num > 0) {
+        if (stk_get_msg(buddy, msg, &msg_len, timestamp) == -1)
+            break;
+        sprintf(buf, "%s(%d) %s\n    ", buddy->nickname, buddy->uid, timestamp);
+        gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &start,&end);
+        gtk_text_buffer_insert(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &end, buf, strlen(buf));
+        gtk_text_buffer_insert(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &end, msg, msg_len);
+        gtk_text_buffer_insert(GTK_TEXT_BUFFER(buddy->chat.show_buffer), &end, "\n", 1);
+    }
+
+    gtk_widget_show_all(buddy->chat.window);
+	return FALSE;
+}
+
+#ifdef STK_USE_NOTIFY
+void notify_buddy(stk_buddy *buddy)
+{
+    int x, y, toward;
+
+    /* check positon of image put in hfix in fuction init_buddylist_window */
+    x = 0;
+	y = 20;
+    toward = 1;
+    msg_in = 1;
+
+    while(msg_in) {
+        gtk_status_icon_set_blinking(stkwidgets.tray, TRUE);
+        g_usleep(1000*250);
+        gdk_threads_enter();
+        gtk_fixed_move(GTK_FIXED(stkwidgets.hfix),stkwidgets.image, x, y);
+        switch(toward)
+        {
+        case 1:
+            x = x - 2;
+            y = y - 2;
+            toward = 2;
+            break;
+        case 2:
+            x = x + 2;
+            y = y + 2;
+            toward = 3;
+            break;
+        case 3:
+            x = x + 2;
+            y = y - 2;
+            toward = 4;
+            break;
+        case 4:
+            x = x - 2;
+            y = y + 2;
+            toward = 1;
+        }
+        gdk_threads_leave();
+    }
+
+    gtk_status_icon_set_blinking(stkwidgets.tray, FALSE);
+    gtk_fixed_move(GTK_FIXED(stkwidgets.hfix),stkwidgets.image, 0, 20);
+}
+#else
+void notify_buddy(stk_buddy *buddy)
+{
+    /* when use g_idle_add, fuction must be return FALSE!!! or on Windows it will work bad */
+    g_idle_add((GSourceFunc)show_chat_text, (gpointer)buddy);
+
+    //show_chat_text(buddy);
+}
+#endif
 
 static void create_popup_menu (stk_buddy *buddy)
 {
@@ -246,6 +371,25 @@ static void create_popup_menu (stk_buddy *buddy)
     gtk_widget_show_all (buddy->menu);
 }
 
+static gboolean popup_chat_window(GtkWidget *widget, GdkEventButton *event)
+{
+    unsigned short buddy_num = stk_get_buddynum();
+    stk_buddy *buddy = NULL;
+
+    if(event->type == GDK_2BUTTON_PRESS && event->button == 0x1) {
+#ifdef STK_USE_NOTIFY
+        msg_in = 0;
+#endif
+        while (buddy_num--) {
+            buddy = stk_get_next(buddy);
+            if (buddy->msg_num)
+                show_chat_text(buddy);
+        }
+        return TRUE;
+	} else {
+        return FALSE;
+	}
+}
 
 static gboolean popup_menu(GtkWidget *widget, GdkEventButton *event)
 {
@@ -253,7 +397,7 @@ static gboolean popup_menu(GtkWidget *widget, GdkEventButton *event)
     GtkTreeSelection *selection;
     GtkTreeModel *model;
     GtkTreeIter iter;
-    gchar *uid;
+    char *uid;
     stk_buddy *buddy = NULL;
 
     model = gtk_tree_view_get_model(GTK_TREE_VIEW(tree)); 
@@ -300,11 +444,14 @@ void init_buddylist_window()
     vfix = gtk_fixed_new();
     hfix = gtk_fixed_new();
     label = gtk_label_new(buf);
-    image = gtk_image_new_from_file("img.png");
+    image = gtk_image_new_from_file(STK_MAIN_ICON_FILE);
+
     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);	
     gtk_fixed_put((GtkFixed *)hfix, image, 0, 20);
     gtk_fixed_put((GtkFixed *)hfix, label, 90, 30);
     gtk_fixed_put((GtkFixed *)vfix, hfix, 20, 10);
+
+    g_signal_connect(G_OBJECT(image), "button-press-event", G_CALLBACK (popup_chat_window), NULL);
 
     tree = gtk_tree_view_new_with_model(create_model());
     gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
@@ -312,10 +459,10 @@ void init_buddylist_window()
     select_item = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
     gtk_tree_selection_set_mode(select_item, GTK_SELECTION_SINGLE);
     gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
-    //gtk_tree_view_set_headers_clickable(tree, TRUE);
-    //gtk_tree_view_set_reorderable(tree, TRUE);
-    gtk_tree_view_set_hover_selection(tree, TRUE);
-    gtk_tree_view_set_hover_expand(tree, TRUE);
+    //gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(tree), TRUE);
+    //gtk_tree_view_set_reorderable(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_hover_selection(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_hover_expand(GTK_TREE_VIEW(tree), TRUE);
 
     setup_tree_view(tree);
 
@@ -323,14 +470,26 @@ void init_buddylist_window()
     gtk_container_add(GTK_CONTAINER(window), vfix);
 
     while (buddy_num--) {
+        GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(STK_BUDDY_ICON_FILE, NULL);
+
         buddy = stk_get_next(buddy);
+        buddy->pixbuf = pixbuf;
         memset(buf, 0, sizeof(buf));
         sprintf(buf, "%d (%s)", buddy->uid, buddy->nickname);
-        add_to_tree(tree, buf);
+        add_to_tree(tree, pixbuf, buf);
         buddy->menu = gtk_menu_new();
         create_popup_menu(buddy);
+		//init_chat_window(buddy);
     }
-    
+
+    stkwidgets.hfix = hfix;
+    stkwidgets.image = image;
+    stkwidgets.treev= tree;
+
+#if defined(USE_GTK_THREAD)
+    g_thread_create((GThreadFunc)stk_recv_msg, (gpointer)&client, FALSE, NULL);  
+#endif
+
     g_signal_connect(G_OBJECT(tree), "button-press-event", G_CALLBACK (popup_menu), NULL);
 
     gtk_widget_show_all(window);
@@ -339,17 +498,17 @@ void init_buddylist_window()
 
 void login_pressed(GtkWidget *widget, LoginWidget *loginwidget)
 {
-    gchar buf[STK_DEFAULT_SIZE];
-    gchar *username, *passwd, *serverip;
+    char buf[STK_DEFAULT_SIZE];
+    char *username, *passwd, *serverip;
     int ret;
 
     memset(buf, 0, sizeof(buf));
-    username = (gchar *)gtk_entry_get_text(GTK_ENTRY(loginwidget->usertext));
-    passwd = (gchar *)gtk_entry_get_text(GTK_ENTRY(loginwidget->passtext));
-    serverip = (gchar *)gtk_entry_get_text(GTK_ENTRY(loginwidget->servertext));
+    username = (char *)gtk_entry_get_text(GTK_ENTRY(loginwidget->usertext));
+    passwd = (char *)gtk_entry_get_text(GTK_ENTRY(loginwidget->passtext));
+    serverip = (char *)gtk_entry_get_text(GTK_ENTRY(loginwidget->servertext));
 
     if (username[0] == '\0') {
-        gchar *err = "Username is NULL\n";
+        char *err = "Username is NULL\n";
         strcpy(buf, err);
         goto error;
     } else {
@@ -357,7 +516,7 @@ void login_pressed(GtkWidget *widget, LoginWidget *loginwidget)
     }
 
     if (passwd[0] == '\0') {
-        gchar *err = "Password is NULL\n";
+        char *err = "Password is NULL\n";
         strcpy(buf, err);
         goto error; 
     } else {
@@ -365,7 +524,7 @@ void login_pressed(GtkWidget *widget, LoginWidget *loginwidget)
     }
 
     if (serverip[0] == '\0') {
-        gchar *err = "Server IP is NULL\n";
+        char *err = "Server IP is NULL\n";
         strcpy(buf, err);
         goto error; 
     } else {
@@ -402,6 +561,9 @@ void login_pressed(GtkWidget *widget, LoginWidget *loginwidget)
             sprintf(buf, "STK Client %d get buddy list failed.\n", client.uid);
             goto error;
         }
+        sprintf(buf, "stkclient:%d(%s)", client.uid, client.nickname);
+        gtk_status_icon_set_tooltip_text(stkwidgets.tray, buf);
+
         clean_login_window();
         init_buddylist_window();
         return;
@@ -418,23 +580,75 @@ void login_pressed(GtkWidget *widget, LoginWidget *loginwidget)
 error:
 
     stk_message("Login Result", buf);
+}
 
+void gtk_window_show(GtkWidget *widget, gpointer data)
+{
+    gtk_widget_show_all((GtkWidget *)data);
+    gtk_window_present(GTK_WINDOW(data));
+}
+
+void gtk_main_exit()
+{
+    gtk_status_icon_set_visible(stkwidgets.tray, FALSE);
+    gtk_main_quit();
+}
+
+void popup_tip(GtkStatusIcon *statusicon, guint button, guint time)
+{
+    GtkWidget *menu;
+    GtkWidget *quit;
+
+    menu = gtk_menu_new();
+    quit = gtk_menu_item_new_with_label ("Quit");
+    g_signal_connect(quit, "activate", G_CALLBACK(gtk_main_exit), NULL);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), quit);
+
+    gtk_widget_show_all(menu);
+    gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, time);
+}
+
+void create_tray(GtkWidget *window)
+{
+    GtkStatusIcon *tray_icon;
+
+    tray_icon = gtk_status_icon_new_from_pixbuf(gdk_pixbuf_new_from_file(STK_MAIN_ICON_FILE, NULL));
+
+    g_signal_connect(G_OBJECT(tray_icon), "activate", G_CALLBACK(gtk_window_show), (gpointer)window);
+    g_signal_connect(G_OBJECT(tray_icon), "popup-menu", G_CALLBACK(popup_tip), NULL); 
+
+    gtk_status_icon_set_tooltip_text(tray_icon, "stkclient");
+    gtk_status_icon_set_visible(tray_icon, TRUE);
+
+    stkwidgets.tray = tray_icon;
+    return;
+}  
+
+void gtk_window_callback(GtkWidget *widget, GdkEventWindowState *event, gpointer data)
+{
+    if(event->changed_mask == GDK_WINDOW_STATE_ICONIFIED && event->new_window_state == GDK_WINDOW_STATE_ICONIFIED)
+    {
+        gtk_widget_hide_all(widget);
+    }
 }
 
 void init_main_window(int argc,char *argv[], GtkWidget *window)
 {
-    g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK (gtk_main_quit), NULL);
-    g_signal_connect (G_OBJECT(window), "delete_event", G_CALLBACK (gtk_main_quit), NULL);
+    g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK (gtk_main_exit), NULL);
+    g_signal_connect (G_OBJECT(window), "delete_event", G_CALLBACK (gtk_main_exit), NULL);
 
     /* set main window attribution */
     gtk_window_unmaximize(GTK_WINDOW(window));
     gtk_window_set_resizable (GTK_WINDOW(window), TRUE);
-    gtk_window_set_title (GTK_WINDOW(window), "STKClient");
+    gtk_window_set_title (GTK_WINDOW(window), "stkclient");
     gtk_widget_set_size_request(window, 300, 600);
     //gtk_window_set_default_size(GTK_WINDOW(window), 300, 600);
     gtk_window_set_position(GTK_WINDOW(window),GTK_WIN_POS_CENTER);
     gtk_window_set_resizable(GTK_WINDOW(window),FALSE);
 
+    gtk_window_set_icon(GTK_WINDOW(window), gdk_pixbuf_new_from_file(STK_MAIN_ICON_FILE, NULL));
+
+    g_signal_connect(window, "window_state_event", G_CALLBACK(gtk_window_callback), NULL);
 }
 
 void init_login_window(LoginWidget *loginwidget)
@@ -447,6 +661,7 @@ void init_login_window(LoginWidget *loginwidget)
     GtkWidget *serverlabel;
     GtkWidget *servertext;
     GtkWidget *loginbutton;
+    GtkAccelGroup *gag;
 
     layout = gtk_fixed_new();
     userlabel = gtk_label_new ("Username:");
@@ -479,6 +694,10 @@ void init_login_window(LoginWidget *loginwidget)
     gtk_fixed_put((GtkFixed *)layout, serverlabel, 80, 300);
     gtk_fixed_put((GtkFixed *)layout, servertext, 80, 320);
     gtk_fixed_put((GtkFixed *)layout, loginbutton, 80, 350);
+
+    gag = gtk_accel_group_new();
+    gtk_window_add_accel_group(GTK_WINDOW(stkwidgets.mainw), gag);
+    gtk_widget_add_accelerator(loginbutton, "clicked", gag, GDK_Return, 0, GTK_ACCEL_VISIBLE); /* GDK_KEY_Return */
 }
 
 int main (int argc,char *argv[])
@@ -494,10 +713,19 @@ int main (int argc,char *argv[])
         exit(0);
     }
 
+#ifdef USE_GTK_THREAD
+    if(!g_thread_supported()) {
+        g_thread_init(NULL);
+    }
+    gdk_threads_init();
+#endif
+
     gtk_init (&argc, &argv);
     stkwidgets.mainw = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 
     init_main_window(argc, argv, stkwidgets.mainw);
+
+    create_tray(stkwidgets.mainw);
 
     init_login_window(&stkwidgets.loginw);
 
@@ -505,7 +733,12 @@ int main (int argc,char *argv[])
 
     gtk_widget_show_all(stkwidgets.mainw);
 
-    gtk_main ();
-
+#ifdef USE_GTK_THREAD
+    gdk_threads_enter();
+#endif
+    gtk_main();
+#ifdef USE_GTK_THREAD
+    gdk_threads_leave();
+#endif
 }
 

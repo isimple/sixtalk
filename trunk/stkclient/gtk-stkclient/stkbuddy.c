@@ -157,3 +157,86 @@ void stk_print_buddylist()
     fflush(stdout);
 }
 #endif
+
+int stk_init_msg(struct chat_message *chatmsg)
+{
+
+}
+
+int stk_add_msg(stk_buddy *buddy, char *data, int size)
+{
+    struct chat_message *chatmsg;
+    struct chat_message *tmp;
+
+    if (data == NULL)
+        return -1;
+
+    chatmsg = (struct chat_message *)malloc(sizeof(struct chat_message));
+    if (chatmsg == NULL) {
+        printf("Error while malloc for chatmsg\n");
+        return -1;
+	}
+
+    chatmsg->timestamp = (char *)malloc(STK_DEFAULT_SIZE);
+    if (chatmsg->timestamp == NULL) {
+        printf("Error while malloc for chatmsg->timestamp\n");
+		free(chatmsg);
+        return -1;
+	}
+	
+    chatmsg->msg = (char *)malloc(size);
+    if (chatmsg->msg == NULL) {
+        printf("Error while malloc for chatmsg->msg\n");
+        free(chatmsg->timestamp);
+        free(chatmsg);
+        return -1;
+	}
+
+    chatmsg->msg_len = size;
+    stk_get_timestamp(chatmsg->timestamp);
+    memcpy(chatmsg->msg, data, size);
+    chatmsg->next = chatmsg;
+
+	if (buddy->chatmsg == NULL || buddy->msg_num == 0) {
+        buddy->chatmsg = chatmsg;
+	} else {
+        tmp = buddy->chatmsg;
+        while(tmp != tmp->next) {
+            tmp = tmp->next;
+        }
+        tmp->next = chatmsg;
+    }
+    buddy->msg_num++;
+
+    return 0;
+}
+
+int stk_get_msg(stk_buddy *buddy, char *data, int *size, char *ts)
+{
+    struct chat_message *tmp;
+
+    if (data == NULL || ts == NULL)
+        return -1;
+
+    tmp = buddy->chatmsg;
+	if(tmp == NULL) {
+        return -1;
+    }
+
+	*size = tmp->msg_len;
+	memcpy(data, tmp->msg, tmp->msg_len);
+	strcpy(ts, tmp->timestamp);
+    buddy->chatmsg = tmp->next;
+    buddy->msg_num--;
+
+    if (buddy->msg_num == 0) {
+        buddy->chatmsg == NULL;
+	}
+
+    free(tmp->msg);
+    free(tmp->timestamp);
+    free(tmp);
+
+    return 0;
+}
+

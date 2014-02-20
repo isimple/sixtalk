@@ -48,5 +48,20 @@ void stk_print(char *fmt)
 #endif
 }
 
+void stk_get_timestamp(char *str)
+{
+    time_t timep;
+    struct tm *p;
 
+    if(str == NULL) {
+         printf("Are U Joking with me?\n");
+         return;
+	}
+	
+    time(&timep);
+    p = localtime(&timep); 
+    sprintf(str, "%d-%d-%d %02d:%02d:%02d", 1900 + p->tm_year, 1 + p->tm_mon, p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+
+    return; 
+}
 
