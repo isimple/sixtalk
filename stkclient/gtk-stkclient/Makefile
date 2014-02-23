@@ -6,8 +6,8 @@
 #
 
 CC   = gcc
-OBJ  = stkclient.o stkpacket.o stkbuddy.o stkutil.o
-LINKOBJ  = stkclient.o stkpacket.o stkbuddy.o stkutil.o
+OBJ  = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o
+LINKOBJ  = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o
 LIBS =  $(shell pkg-config --libs gtk+-2.0) -lgthread-2.0
 CFLAGS = -D_LINUX_ $(shell pkg-config --cflags gtk+-2.0)
 BIN = stkclient
@@ -26,6 +26,12 @@ $(BIN): $(OBJ)
 
 stkclient.o: stkclient.c
 	$(CC) -c stkclient.c -o stkclient.o $(CFLAGS)
+
+stkui.o: stkui.c
+	$(CC) -c stkui.c -o stkui.o $(CFLAGS)
+
+stkchat.o: stkchat.c
+	$(CC) -c stkchat.c -o stkchat.o $(CFLAGS)
 
 stkpacket.o: stkpacket.c
 	$(CC) -c stkpacket.c -o stkpacket.o $(CFLAGS)

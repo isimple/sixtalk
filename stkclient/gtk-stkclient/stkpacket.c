@@ -439,7 +439,7 @@ int stk_recv_msg(client_config *client)
                     stk_print("Bad buddy!!\n");
                 else {
                     if (!stk_add_msg(buddy, data, size)) {
-                        notify_buddy(buddy);
+                        stk_msg_event(buddy);
                     }
                 }
                 break;

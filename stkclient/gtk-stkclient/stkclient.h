@@ -62,6 +62,7 @@ typedef struct{
 #elif defined(_LINUX_)
     int fd;
 #endif
+    int state;
     unsigned char pass[STK_PASS_SIZE];
     unsigned char serverip[STK_IPADDR_LENGTH];
 }client_config;
@@ -76,11 +77,14 @@ struct chat_message{
 typedef struct{
     int show;
     GtkWidget *window;
+    GtkWidget *toolbox;
     GtkWidget *show_scrolled,*input_scrolled;
     GtkWidget *show_view,*input_view;
     GtkTextBuffer *show_buffer,*input_buffer;
     GtkWidget *send_button,*close_button;
     GtkWidget *hbox,*vbox;
+    GtkTextTag *minfo, *binfo, *mtext, *btext;
+    //struct chat_widgets *next;
 }chat_widgets;
 
 typedef struct{
@@ -91,7 +95,6 @@ typedef struct{
     unsigned char gender;
     struct list_head list;
     int state;
-    GdkPixbuf *pixbuf;
     GtkWidget *menu;
     chat_widgets chat;
     int msg_num;
