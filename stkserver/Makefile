@@ -5,13 +5,13 @@
 #  All Rights Reserved
 #
 
-CC = gcc
-OBJ = stkserver.o stkpacket.o stkuser.o cJSON.o
+CC      = gcc
+OBJ     = stkserver.o stkpacket.o stkuser.o cJSON.o
 LINKOBJ = stkserver.o stkpacket.o stkuser.o cJSON.o
-LIBS = -lm -lpthread
-CFLAGS = 
-BIN = stkserver
-RM = rm -f
+LIBS    = -lm -lpthread
+CFLAGS  = 
+BIN     = stkserver
+RM      = rm -f
 
 .PHONY: all all-before all-after clean clean-custom
 
