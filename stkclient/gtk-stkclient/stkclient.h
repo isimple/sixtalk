@@ -51,6 +51,20 @@
 
 #define STK_CLIENT_TIMEOUT      5
 
+/* used by stk_running */
+#define STK_UNINITIALIZED  1
+#define STK_INITIALIZED    2
+#define STK_CONNECTE_REQ   3
+#define STK_CONNECTING     4
+#define STK_CONNECTE_ERR   5
+#define STK_CONNECTED      6
+#define STK_SOCKET_ERR     7
+#define STK_USERID_ERR     8
+#define STK_PASSWORD_ERR   9
+#define STK_ALREADY_LOGGIN 10
+#define STK_RUNNING        11
+#define STK_EXITING        12
+
 typedef struct{
     unsigned int uid;
     unsigned char nickname[STK_NICKNAME_SIZE];

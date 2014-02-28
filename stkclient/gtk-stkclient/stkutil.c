@@ -72,41 +72,82 @@ void stk_get_timestamp(char *str)
     return; 
 }
 
-#if 0
-typedef enum
+gboolean on_button_press(GtkWidget* widget, GdkEventButton* event, ImageButton *ib)
 {
-  EVENT_PRESS_MASK            = 1 << 1,
-  EVENT_RELEASE_MASK          = 1 << 2,
-  EVENT_ENTER_NOTIFY_MASK    = 1 << 3,
-  EVENT_LEAVE_NOTIFY_MASK    = 1 << 4,
-  EVENT_ALL__MASK             = 0x3FFFFE
-} EventMask;
-GtkWidget *stk_create_widget_by_image(const char *imagename, GCallback func, gpointer data, GtkWidget **event_box)
-{
-    GtkWidget *image;
+    gtk_container_remove(GTK_CONTAINER(ib->event_box), ib->image);
 
-    image = gtk_image_new_from_file(imagename);
-    *event_box = gtk_event_box_new();
-    gtk_container_add(GTK_CONTAINER(*event_box), image);
+    ib->image = gtk_image_new_from_file(ib->on_press);
+    gtk_container_add(GTK_CONTAINER(ib->event_box), ib->image);
+    gtk_widget_show(ib->image);
 
-    gtk_widget_set_events(*event_box, EVENT_PRESS_MASK);
-    g_signal_connect(G_OBJECT(*event_box), "button_press_event", G_CALLBACK(func), data);
-
-#if 0
-    gtk_widget_add_events (event_box, EVENT_RELEASE_MASK);
-    g_signal_connect(G_OBJECT(event_box), "button_release_event",G_CALLBACK(on_button_release), image);
-
-    gtk_widget_add_events (event_box, EVENT_ENTER_NOTIFY_MASK);
-    g_signal_connect (G_OBJECT(event_box), "enter_notify_event",G_CALLBACK(on_enter_notify), image);
-
-    gtk_widget_add_events (event_box, EVENT_LEAVE_NOTIFY_MASK);
-    g_signal_connect (G_OBJECT(event_box), "leave_notify_event",G_CALLBACK(on_leave_notify), image);
-#endif
-
-    return image;
+    return TRUE;
 }
 
-void stk_movement(STKWIDGETS widgets)
+gboolean on_button_release(GtkWidget* widget, GdkEventButton* event, ImageButton *ib)
+{
+    gtk_container_remove(GTK_CONTAINER(ib->event_box), ib->image);
+
+    ib->image = gtk_image_new_from_file(ib->on_enter);
+    gtk_container_add(GTK_CONTAINER(ib->event_box), ib->image);
+    gtk_widget_show(ib->image);
+
+    return TRUE;
+}
+
+gboolean on_enter_notify(GtkWidget* widget, GdkEventCrossing* event, ImageButton *ib)
+{
+    gtk_container_remove(GTK_CONTAINER(ib->event_box), ib->image);
+
+    ib->image = gtk_image_new_from_file(ib->on_enter);
+    gtk_container_add(GTK_CONTAINER(ib->event_box), ib->image);
+    gtk_widget_show(ib->image);
+
+    return TRUE;
+}
+
+gboolean on_leave_notify(GtkWidget* widget, GdkEventCrossing* event, ImageButton *ib)
+{
+    gtk_container_remove(GTK_CONTAINER(ib->event_box), ib->image);
+
+    ib->image = gtk_image_new_from_file(ib->normal);
+    gtk_container_add(GTK_CONTAINER(ib->event_box), ib->image);
+    gtk_widget_show(ib->image);
+
+    return TRUE;
+}
+
+void stk_create_imgbtn(ImageButton *ib, gpointer func, gpointer data)
+{
+    if (ib == NULL) {
+        printf("What happened to master? Does him get 2\n");
+        return;
+    }
+
+    ib->image = gtk_image_new_from_file(ib->normal);
+    ib->event_box = gtk_event_box_new();
+    gtk_container_add(GTK_CONTAINER(ib->event_box), ib->image);
+
+#if GTK_CHECK_VERSION(2,12,0)
+    if (ib->tips != NULL) {
+        gtk_widget_set_tooltip_text(ib->event_box, ib->tips);
+    }
+#endif
+
+    gtk_widget_add_events(ib->event_box, GDK_BUTTON_PRESS_MASK);
+    g_signal_connect(G_OBJECT(ib->event_box), "button_press_event", G_CALLBACK(on_button_press), (gpointer)ib);
+	
+    gtk_widget_add_events(ib->event_box, GDK_BUTTON_RELEASE_MASK);
+    g_signal_connect(G_OBJECT(ib->event_box), "button_release_event", G_CALLBACK(func), data);
+	
+    gtk_widget_add_events(ib->event_box, GDK_ENTER_NOTIFY_MASK);
+    g_signal_connect(G_OBJECT(ib->event_box), "enter_notify_event", G_CALLBACK(on_enter_notify), (gpointer)ib);
+	
+    gtk_widget_add_events(ib->event_box, GDK_LEAVE_NOTIFY_MASK);
+    g_signal_connect(G_OBJECT(ib->event_box), "leave_notify_event", G_CALLBACK(on_leave_notify), (gpointer)ib);
+    return;
+}
+#if 0
+void stk_movement(StkWidget widgets)
 {
     int x, y, toward;
 

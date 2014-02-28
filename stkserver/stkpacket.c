@@ -145,9 +145,11 @@ int stk_login_ack(int fd, unsigned int uid, char *buf)
     if (ret == -2) {
         *tmp = STK_LOGIN_INVALID_UID;
     } else {
-        if (!memcmp(tmp, pass, STK_PASS_SIZE)) {
+        client = stk_find_user(uid);
+        if (client->stkc_state) {
+            *tmp = STK_LOGIN_AGAIN;
+        } else if (!memcmp(tmp, pass, STK_PASS_SIZE)) {
             *tmp = STK_LOGIN_SUCCESS;
-            client = stk_find_user(uid);
             client->stkc_fd = fd;
             client->stkc_tid= pthread_self();
             client->stkc_state = STK_CLIENT_ONLINE;
