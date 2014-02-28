@@ -17,10 +17,15 @@
 #include <netinet/in.h>
 #endif
 
-
 #include "stk.h"
 
 unsigned int token = 0;
+
+#define STK_FLAG_SENDTIMEO 0
+#define STK_FLAG_RECVTIMEO 1
+
+#define STK_SOCKET_RECV_TIMEOUT 1
+#define STK_SOCKET_SEND_TIMEOUT 5
 
 void stk_debug_print(char *buf, int len)
 {
@@ -35,32 +40,64 @@ void stk_debug_print(char *buf, int len)
 }
 
 #if defined(WIN32)
+
 int stk_init_socket(SOCKET *fd)
 {
     WSADATA  Ws;
 
     /* Init Windows Socket */
-    if ( WSAStartup(MAKEWORD(2,2), &Ws) != 0 )
+    if (WSAStartup(MAKEWORD(2,2), &Ws) != 0)
     {
-        stk_print("init socket error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_init_socket: init socket error\n");
         return -1;
     }
 
     return 0;
 }
+
+int stk_set_socket_timeout(SOCKET fd, int flag, int seconds)
+{
+    int timeout = 1000*seconds;
+    int ret;
+
+    if (flag == STK_FLAG_SENDTIMEO) {
+        ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
+    } else {
+        ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+    }
+
+    return ret;
+}
+
 #elif defined(_LINUX_)
+
 int stk_init_socket(int *fd)
 {
     return 0;
 }
+int stk_set_socket_timeout(int fd, int flag, int seconds)
+{
+    struct timeval timeout={seconds, 0};
+    int ret;
+
+    if (flag == STK_FLAG_SENDTIMEO) {
+        ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    } else {
+        ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    }
+
+	return ret;
+}
+
 #endif
 
 int stk_connect(client_config *config)
 {
     struct sockaddr_in servaddr;
+    int ret = -1;
 
     if((config->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        stk_print("create socket error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_connect: create socket error\n");
         return -1;
     }
 
@@ -69,14 +106,19 @@ int stk_connect(client_config *config)
     servaddr.sin_port = htons(STK_SERVER_PORT);
     servaddr.sin_addr.s_addr = inet_addr(config->serverip);
     if( servaddr.sin_addr.s_addr == INADDR_NONE ){
-        stk_print("inet_addr error for %s\n",config->serverip);
+        stk_print("stk_connect: inet_addr error for %s\n", config->serverip);
         return -1;
     }
 
+    /* set timeout too short seems get socket err */
+    //stk_set_socket_timeout(config->fd, STK_FLAG_SENDTIMEO, STK_SOCKET_SEND_TIMEOUT);
+    //stk_set_socket_timeout(config->fd, STK_FLAG_RECVTIMEO, STK_SOCKET_RECV_TIMEOUT);
+
     if( connect(config->fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0){
-        stk_print("connect error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_connect: connect error\n");
         return -1;
     }
+
     return 0;
 }
 
@@ -99,6 +141,11 @@ int stk_login(int fd, char *buf, int max_len, unsigned int uid, char *password)
 
     //g_print("start to req login token.\n");
 
+    if (buf == NULL) {
+        return -1;
+    }
+    memset(buf, 0, max_len);
+
     /* req login */
     stk_init_head((stkp_head *)buf, STKP_CMD_REQ_LOGIN, uid);
 
@@ -109,13 +156,13 @@ int stk_login(int fd, char *buf, int max_len, unsigned int uid, char *password)
     buf[len++] = STKP_PACKET_TAIL;
 
     if (len != send(fd, buf, len, 0)) {
-        stk_print("send req login msg error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_login: send req login msg error\n");
         return STK_CLIENT_LOGIN_ERROR;
     }
 
     len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
     if (len == -1){
-        stk_print("recv socket error: %s(errno: %d)",strerror(errno),errno);
+        stk_print("stk_login: recv socket error(req login)\n");
         return STK_CLIENT_LOGIN_ERROR;
     }
 
@@ -152,13 +199,13 @@ int stk_login(int fd, char *buf, int max_len, unsigned int uid, char *password)
     len += sizeof(stkp_head) + 1;
 
     if (len != send(fd, buf, len, 0)) {
-        stk_print("send login msg error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_login: send login msg error\n");
         return STK_CLIENT_LOGIN_ERROR;
     }
 
     len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
     if (len == -1){
-        stk_print("recv socket error: %s(errno: %d)\n",strerror(errno),errno);
+        stk_print("stk_login: recv socket error(login)\n");
         return STK_CLIENT_LOGIN_ERROR;
     }
 
@@ -181,8 +228,10 @@ int stk_login(int fd, char *buf, int max_len, unsigned int uid, char *password)
             return STK_CLIENT_LOGIN_INVALID_UID;
         } else if (*tmp == STK_LOGIN_INVALID_PASS) {
             return STK_CLIENT_LOGIN_INVALID_PASS;
+        } else if (*tmp == STK_LOGIN_AGAIN) {
+            return STK_CLIENT_LOGIN_AGAIN;
         } else {
-            stk_print("Unknown login reply.\n");
+            stk_print("stk_login: Unknown login reply.\n");
             return STK_CLIENT_LOGIN_ERROR;
         }
     }
@@ -219,13 +268,13 @@ int stk_send_getprofile(int fd, char *buf, int max_len, unsigned int uid, unsign
     len++;
 
     if (len != send(fd, buf, len, 0)) {
-        stk_print("send msg error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_send_getprofile: send msg error\n");
         return -1;
     }
 
     len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
     if (len == -1){
-        stk_print("recv socket error: %s(errno: %d)",strerror(errno),errno);
+        stk_print("stk_send_getprofile: recv socket error\n");
         return -1;
     }
 
@@ -290,13 +339,13 @@ int stk_send_getbuddylist(int fd, char *buf, int max_len, unsigned int uid)
     buf[len++] = STKP_PACKET_TAIL;
 
     if (len != send(fd, buf, len, 0)) {
-        stk_print("send msg error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_send_getbuddylist: send msg error\n");
         return -1;
     }
 
     len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
     if (len == -1){
-        stk_print("recv socket error: %s(errno: %d)",strerror(errno),errno);
+        stk_print("stk_send_getbuddylist: recv socket error\n");
         return -1;
     }
 
@@ -381,7 +430,7 @@ int stk_send_msg(int fd, char *buf, int max_len, char *data, int data_len, unsig
     len++;
 
     if (len != send(fd, buf, len, 0)) {
-        stk_print("send msg error: %s(errno: %d)\n", strerror(errno), errno);
+        stk_print("stk_send_msg: send msg error\n");
         return -1;
     }
 }
@@ -398,7 +447,7 @@ int stk_recv_msg(client_config *client)
     while (1) {
         len = recv(client->fd, recvbuf, STK_MAX_PACKET_SIZE, 0);
         if (len == -1){
-            stk_print("recv socket error: %s(errno: %d)",strerror(errno),errno);
+            stk_print("stk_recv_msg: recv socket error\n");
             return STK_SOCKET_ERROR;
         } else if (len == 0) {
             stk_print("\n\nSTK Server close the socket, exiting...\n\n");
@@ -444,7 +493,7 @@ int stk_recv_msg(client_config *client)
                 }
                 break;
             default:
-                stk_print("Bad STKP CMD, Drop it.");
+                stk_print("stk_recv_msg: Bad STKP CMD, Drop it.\n");
                 break;
             }
         }
@@ -452,8 +501,3 @@ int stk_recv_msg(client_config *client)
     return 0;
 }
 
-
-void stk_clean_socket()
-{
-
-}

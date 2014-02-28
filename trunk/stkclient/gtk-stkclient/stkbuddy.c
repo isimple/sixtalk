@@ -53,7 +53,7 @@ int stk_add_buddy(stk_buddy *buddy)
 
         list_add_tail(&new_buddy->list, &stk_buddys);
     } else {
-        stk_print("malloc error: %s(errno: %d)\n",strerror(errno),errno);
+        stk_print("malloc error, what now?\n");
         return -2;
     }
 
@@ -113,6 +113,28 @@ stk_buddy *stk_get_next(stk_buddy *buddy)
     }
 
     return next_buddy;
+}
+
+void stk_get_buddyinfo(stk_buddy *buddy, char *buf)
+{
+    char tmp[STK_DEFAULT_SIZE] = {0};
+
+    if (buddy == NULL || buf == NULL){
+        return;
+    }
+
+    sprintf(tmp, "Uid:\t\t\t%d\n", buddy->uid);
+	strcat(buf, tmp);
+    sprintf(tmp, "Nickname:\t%s\n", buddy->nickname);
+	strcat(buf, tmp);
+    sprintf(tmp, "City:\t\t%s\n", buddy->city);
+	strcat(buf, tmp);
+    sprintf(tmp, "Phone:\t\t%d\n", buddy->phone);
+	strcat(buf, tmp);
+    sprintf(tmp, "Gender:\t\t%s\n", (buddy->gender == STK_GENDER_BOY)?"boy":"girl");
+	strcat(buf, tmp);
+
+    return;
 }
 
 #if 0

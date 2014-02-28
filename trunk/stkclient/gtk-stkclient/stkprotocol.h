@@ -28,6 +28,7 @@ enum {
 #define STKP_MAGIC             0x5354
 #define STKP_VERSION           0x0001
 
+#define STK_LOGIN_ERR          -1
 #define STK_LOGIN_SUCCESS      0
 #define STK_LOGIN_AGAIN        1
 #define STK_LOGIN_INVALID_UID  2

@@ -14,11 +14,12 @@
 #include <winsock2.h>
 #endif
 
-#if 1//def _LINUX_
+#ifdef _LINUX_
 #include <errno.h>
 #endif
 
 #include <gtk/gtk.h>
+#include <glib.h>
 
 #include "stklist.h"
 #include "stkprotocol.h"
@@ -26,6 +27,7 @@
 #include "stkwidget.h"
 
 //#define STK_GUI_DEBUG
+#define LOGIN_STYLE_NEW
 
 /*
  *********************************************
@@ -44,6 +46,11 @@ stk_buddy *stk_get_next(stk_buddy *buddy);
  *              stkpacket.c                  *
  *********************************************
  */
+int stk_connect(client_config *config);
+int stk_login(int fd, char *buf, int max_len, unsigned int uid, char *password);
+int stk_send_getprofile(int fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy);
+int stk_send_getbuddylist(int fd, char *buf, int max_len, unsigned int uid);
+int stk_send_msg(int fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int n_uid);
 int stk_recv_msg(client_config *client);
 
 
@@ -53,9 +60,11 @@ int stk_recv_msg(client_config *client);
  *********************************************
  */
 GtkWidget *stk_mainwin_create(void);
-void stk_window_exit(GtkWidget *widget, GtkStatusIcon *tray);
+gboolean stk_window_exit(GtkWidget *widget, GtkStatusIcon *tray);
+gboolean stk_window_exit2(GtkWidget *widget, GdkEventButton *event, GtkStatusIcon *tray);
+void stk_screensize_get(ScreenSize *screensize);
 GtkStatusIcon *stk_tray_create(GtkWidget *window);
-void stk_loginwin_create(STKWIDGETS *widgets);
+void stk_loginwin_create(StkWidget *widgets);
 
 
 /*
@@ -70,6 +79,19 @@ void stk_chatwin_show(GtkWidget *widget, stk_buddy *buddy);
 gboolean stk_msg_send(GtkWidget *widget, stk_buddy *buddy);
 void stk_msg_event(stk_buddy *buddy);
 
+/*
+ *********************************************
+ *              stkutil.c                  *
+ *********************************************
+ */
+
+
+/*
+ *********************************************
+ *              stkwav.c                  *
+ *********************************************
+ */
+void stk_play_wav(char *filename);
 
 #endif /* _STK_H_ */
 

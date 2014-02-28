@@ -14,33 +14,61 @@
 
 extern client_config client;
 
-void stk_window_hide(GtkWidget *widget, GtkWidget *window)
+gboolean stk_window_hide(GtkWidget *widget, GtkWidget *window)
 {
     gtk_window_iconify(GTK_WINDOW(window));
+    return TRUE;
 }
 
-void stk_window_show(GtkWidget *widget, GtkWidget *window)
+gboolean stk_window_hide2(GtkWidget *widget,  GdkEventButton *event, GtkWidget *window)
 {
-#if 0
-    /* set window position */
-    gtk_window_move(GTK_WINDOW(window), 
-           widgets.size.width-40-STK_WINDOW_WIDTH, (widgets.size.height-STK_WINDOW_HEIGHT)/2);
-#endif
-    gtk_widget_show_all((GtkWidget *)window);
-    gtk_window_present(GTK_WINDOW(window));
+    if(event->type == GDK_BUTTON_RELEASE && event->button == 0x1) {
+        gtk_window_iconify(GTK_WINDOW(window));
+        return TRUE;
+    } else {
+        return FALSE;
+	}
 }
 
-void stk_window_exit(GtkWidget *widget, GtkStatusIcon *tray)
+/* if gtk_window_move() doesnot called before this, the position of window is decided by window manager */
+gboolean stk_window_show(GtkWidget *widget, GtkWidget *window)
+{
+    if (window == NULL) /* will never happened */
+        return FALSE;
+    gtk_widget_show_all(window);
+    /* set window toplevel, then set usertext as focus. For windows, it's necessary, for Linux, seems no need */
+    gtk_window_present(GTK_WINDOW(window));
+    return TRUE;
+}
+
+gboolean stk_window_exit(GtkWidget *widget, GtkStatusIcon *tray)
 {
     gtk_status_icon_set_visible(tray, FALSE);
     gtk_main_quit();
+    stk_set_running(STK_EXITING);
+    return TRUE;
 }
 
-void stk_window_iconify(GtkWidget *widget, GdkEventWindowState *event, gpointer data)
+gboolean stk_window_exit2(GtkWidget *widget,  GdkEventButton *event, GtkStatusIcon *tray)
+{
+    if(event->type == GDK_BUTTON_RELEASE && event->button == 0x1) {
+        gtk_status_icon_set_visible(tray, FALSE);
+        gtk_main_quit();
+        stk_set_running(STK_EXITING);
+        return TRUE;
+    } else {
+        return FALSE;
+	}
+}
+
+gboolean stk_window_iconify(GtkWidget *widget, GdkEventWindowState *event, gpointer data)
 {
     if(event->changed_mask == GDK_WINDOW_STATE_ICONIFIED && event->new_window_state == GDK_WINDOW_STATE_ICONIFIED)
     {
         gtk_widget_hide_all(widget);
+        return TRUE;
+    } else {
+        return FALSE;
     }
 }
 
@@ -50,16 +78,19 @@ gboolean stk_window_move(GtkWidget *widget,GdkEventButton *event,gint data)
     {
         gtk_window_begin_move_drag(GTK_WINDOW(gtk_widget_get_toplevel(widget)), 
                       event->button, event->x_root, event->y_root,event->time);
+        return TRUE;
+    } else {
+        return TRUE;
     }
 }
 
-void stk_screen_get(STKWIDGETS *widgets)
+void stk_screensize_get(ScreenSize *screensize)
 {
-    /* get screen and its width and height */
-    widgets->screen = gdk_screen_get_default();
-    widgets->size.width = gdk_screen_get_width (widgets->screen);
-    widgets->size.height = gdk_screen_get_height (widgets->screen);
+    GdkScreen *screen;
 
+    screen = gdk_screen_get_default();
+    screensize->width = gdk_screen_get_width(screen);
+    screensize->height = gdk_screen_get_height(screen);
 }
 
 void stk_tray_menu(GtkStatusIcon *statusicon, guint button, guint time, GtkWidget *window)
@@ -79,7 +110,7 @@ void stk_tray_menu(GtkStatusIcon *statusicon, guint button, guint time, GtkWidge
     }
 
     item = gtk_menu_item_new_with_label("Quit");
-    g_signal_connect(item, "activate", G_CALLBACK(stk_window_exit), NULL);
+    g_signal_connect(item, "activate", G_CALLBACK(stk_window_exit), (gpointer)statusicon);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
 
     gtk_widget_show_all(menu);
@@ -116,15 +147,14 @@ GtkWidget *stk_mainwin_create()
 
     gtk_window_unmaximize(GTK_WINDOW(window));
     gtk_window_set_title(GTK_WINDOW(window), "stkclient");
-    gtk_widget_set_size_request(window, STK_WINDOW_WIDTH, STK_WINDOW_HEIGHT);
+    gtk_widget_set_size_request(window, STK_MAINWIN_WIDTH, STK_MAINWIN_HEIGHT);
     //gtk_window_set_default_size(GTK_WINDOW(window), 300, 600);
     gtk_window_set_position(GTK_WINDOW(window),GTK_WIN_POS_CENTER);
     gtk_window_set_resizable(GTK_WINDOW(window),FALSE);
+    gtk_window_set_keep_above(GTK_WINDOW(window),TRUE);
 
     /* set window background color */
     //gdk_color_parse("green", &color);
-    //gdk_color_parse("#96FA96", &color);
-    //gdk_color_parse("#C8C8FA", &color);
     gdk_color_parse(MAIN_COLRO_STRING, &color);
     //color.red = 0xffff;  
     //color.green = 0xffff;  
@@ -194,18 +224,8 @@ static void stk_buddy_show(GtkWidget *widget, gpointer data)
 {
     stk_buddy *buddy = (stk_buddy *)data;
     char buf[STK_MAX_SIZE] = {0};
-    char tmp[STK_DEFAULT_SIZE] = {0};
 
-    sprintf(tmp, "Uid:\t\t\t%d\n", buddy->uid);
-	strcat(buf, tmp);
-    sprintf(tmp, "Nickname:\t%s\n", buddy->nickname);
-	strcat(buf, tmp);
-    sprintf(tmp, "City:\t\t%s\n", buddy->city);
-	strcat(buf, tmp);
-    sprintf(tmp, "Phone:\t\t%d\n", buddy->phone);
-	strcat(buf, tmp);
-    sprintf(tmp, "Gender:\t\t%s\n", (buddy->gender == STK_GENDER_BOY)?"boy":"girl");
-	strcat(buf, tmp);
+    stk_get_buddyinfo(buddy, buf);
 
     stk_message("User", buf);
 }
@@ -254,17 +274,17 @@ static void stk_buddy_rclick (stk_buddy *buddy)
     chat = gtk_menu_item_new_with_label("Chat With Buddy");
     separator = gtk_separator_menu_item_new();
 
-    g_signal_connect(G_OBJECT(buddy_info), "activate", G_CALLBACK (stk_buddy_show), (gpointer)buddy);
-    g_signal_connect(G_OBJECT(chat), "activate", G_CALLBACK (stk_chatwin_show), (gpointer)buddy);
+    g_signal_connect(G_OBJECT(buddy_info), "activate", G_CALLBACK(stk_buddy_show), (gpointer)buddy);
+    g_signal_connect(G_OBJECT(chat), "activate", G_CALLBACK(stk_chatwin_show), (gpointer)buddy);
 
-    gtk_menu_shell_append(GTK_MENU_SHELL (buddy->menu), buddy_info);
-    gtk_menu_shell_append(GTK_MENU_SHELL (buddy->menu), separator);
-    gtk_menu_shell_append(GTK_MENU_SHELL (buddy->menu), chat);
+    gtk_menu_shell_append(GTK_MENU_SHELL(buddy->menu), buddy_info);
+    gtk_menu_shell_append(GTK_MENU_SHELL(buddy->menu), separator);
+    gtk_menu_shell_append(GTK_MENU_SHELL(buddy->menu), chat);
 
     gtk_widget_show_all(buddy->menu);
 }
 
-void stk_buddywin_create(STKWIDGETS *widgets)
+void stk_buddywin_create(StkWidget *widgets)
 {
     char buf[STK_DEFAULT_SIZE] = {0};
     stk_buddy *buddy = NULL;
@@ -277,8 +297,11 @@ void stk_buddywin_create(STKWIDGETS *widgets)
     GtkWidget *tree;
     GtkListStore *store;
     GtkTreeSelection *select_item;
-    //GtkWidget *toolbar;
+    GtkRequisition *imgsize;
     GtkToolItem *toolitem;
+#if !GTK_CHECK_VERSION(2,12,0)
+	GtkTooltips *tooltips;
+#endif
 
     sprintf(buf, "%d (%s)", client.uid, client.nickname);
 
@@ -287,21 +310,49 @@ void stk_buddywin_create(STKWIDGETS *widgets)
     hbox2 = gtk_hbox_new(FALSE, 0);
     hbox3 = gtk_hbox_new(FALSE, 0);
 
+#if !GTK_CHECK_VERSION(2,12,0)
+    tooltips = gtk_tooltips_new();
+#endif
+
+#if 0
     /* init close and minimize button for main window */
     image = gtk_image_new_from_file(STK_CLOSE_PNG);
 	toolitem = gtk_tool_button_new(image, "Close");
+#if !GTK_CHECK_VERSION(2,12,0)
+    gtk_tool_item_set_tooltip(toolitem, tooltips, "Close", NULL);
+#else
     gtk_tool_item_set_tooltip_text(toolitem, "Close");
+#endif
     gtk_tool_item_set_is_important(toolitem, TRUE);
 	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_window_exit), (gpointer)widgets->tray);
     gtk_box_pack_end(GTK_BOX(hbox1), GTK_WIDGET(toolitem), FALSE, FALSE, 0);
 
     image = gtk_image_new_from_file(STK_MIN_PNG);
 	toolitem = gtk_tool_button_new(image, "Minimize");
+#if !GTK_CHECK_VERSION(2,12,0)
+    gtk_tool_item_set_tooltip(toolitem, tooltips, "Minimize", NULL);
+#else
     gtk_tool_item_set_tooltip_text(toolitem, "Minimize");
+#endif
     gtk_tool_item_set_is_important(toolitem, TRUE);
 	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_window_hide), (gpointer)widgets->mainw);
     gtk_box_pack_end(GTK_BOX(hbox1), GTK_WIDGET(toolitem), FALSE, FALSE, 0);
+#else
+    memset(&widgets->minbtn, 0, sizeof(ImageButton));
+	strcpy(widgets->minbtn.normal, STK_MIN_NORMAL_PNG);
+	strcpy(widgets->minbtn.on_enter, STK_MIN_HLIGHT_PNG);
+	strcpy(widgets->minbtn.on_press, STK_MIN_DOWN_PNG);
+	strcpy(widgets->minbtn.tips, "Minimize");
 
+    stk_create_imgbtn(&widgets->cbtn, stk_window_exit2, (gpointer)widgets->tray);
+    stk_create_imgbtn(&widgets->minbtn, stk_window_hide2, (gpointer)widgets->mainw);
+    gtk_event_box_set_visible_window(GTK_EVENT_BOX(widgets->cbtn.event_box), FALSE);
+    gtk_event_box_set_visible_window(GTK_EVENT_BOX(widgets->minbtn.event_box), FALSE);
+
+    gtk_box_pack_end(GTK_BOX(hbox1), widgets->cbtn.event_box, FALSE, FALSE, 0);
+    gtk_box_pack_end(GTK_BOX(hbox1), widgets->minbtn.event_box, FALSE, FALSE, 0);
+
+#endif
     /* init my infomation widgets and add to hbox2 */
     label = gtk_label_new(buf);
     image = gtk_image_new_from_file(STK_AVATAR_PNG);
@@ -333,21 +384,33 @@ void stk_buddywin_create(STKWIDGETS *widgets)
     /* init tools, chat voice video  */
     image = gtk_image_new_from_file(STK_CHAT_PNG);
 	toolitem = gtk_tool_button_new(image, "Chat");
+#if !GTK_CHECK_VERSION(2,12,0)
+    gtk_tool_item_set_tooltip(toolitem, tooltips, "Chat", NULL);
+#else
     gtk_tool_item_set_tooltip_text(toolitem, "Chat");
+#endif
 	gtk_tool_item_set_is_important(toolitem, TRUE);
 	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_chat_request), (gpointer)buddy);
     gtk_box_pack_start(GTK_BOX(hbox3), GTK_WIDGET(toolitem), FALSE, FALSE, 0);
 
     image = gtk_image_new_from_file(STK_VOICE_PNG);
 	toolitem = gtk_tool_button_new(image, "Voice");
+#if !GTK_CHECK_VERSION(2,12,0)
+    gtk_tool_item_set_tooltip(toolitem, tooltips, "Voice", NULL);
+#else
     gtk_tool_item_set_tooltip_text(toolitem, "Voice");
+#endif
 	gtk_tool_item_set_is_important(toolitem, TRUE);
 	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_voice_request), (gpointer)buddy);
     gtk_box_pack_start(GTK_BOX(hbox3), GTK_WIDGET(toolitem), FALSE, FALSE, 0);
 
     image = gtk_image_new_from_file(STK_VIDEO_PNG);
 	toolitem = gtk_tool_button_new(image, "Video");
+#if !GTK_CHECK_VERSION(2,12,0)
+    gtk_tool_item_set_tooltip(toolitem, tooltips, "Video", NULL);
+#else
     gtk_tool_item_set_tooltip_text(toolitem, "Video");
+#endif
 	gtk_tool_item_set_is_important(toolitem, TRUE);
 	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_video_request), (gpointer)buddy);
     gtk_box_pack_start(GTK_BOX(hbox3), GTK_WIDGET(toolitem), FALSE, FALSE, 0);
@@ -371,18 +434,139 @@ void stk_buddywin_create(STKWIDGETS *widgets)
 
     widgets->treev= tree;
 
-#if defined(USE_GTK_THREAD)
-    g_thread_create((GThreadFunc)stk_recv_msg, (gpointer)&client, FALSE, NULL);  
-#endif
-
     gtk_window_present(GTK_WINDOW(widgets->mainw));
     gtk_widget_show_all(widgets->mainw);
 }
 
-
-void stk_loginbtn_pressed(GtkWidget *widget, STKWIDGETS *widgets)
+void stk_login_cancle(GtkWidget *widget, StkWidget *widgets)
 {
-    unsigned char sendbuf[STK_MAX_PACKET_SIZE] = {0};
+    stk_set_running(STK_INITIALIZED);
+}
+
+void stk_loginret_show(int show, char *buf, GtkWidget *retlabel)
+{
+    if(show) {
+        gtk_label_set_text(GTK_LABEL(retlabel), buf);
+        gtk_widget_show(retlabel);
+	} else {
+        gtk_label_set_text(GTK_LABEL(retlabel), NULL);
+        gtk_widget_hide(retlabel);
+	}
+}
+
+gboolean stk_waiting(StkWidget *widgets)
+{
+    int running;
+    char buf[STK_DEFAULT_SIZE] = {0};
+
+    running = stk_get_running();
+
+    if (running == STK_CONNECTING || running == STK_CONNECTE_REQ) {
+        /* just continue */
+        return TRUE;
+    } else if (running == STK_SOCKET_ERR || running == STK_CONNECTE_ERR) {
+        stk_set_running(STK_INITIALIZED);
+        strcpy(buf, "Connect to stkserver falied.");
+        goto failed;
+    } else if (running == STK_USERID_ERR) {
+        stk_set_running(STK_INITIALIZED);
+        strcpy(buf, "Invalid Username.");
+        goto failed;
+    } else if (running == STK_PASSWORD_ERR) {
+        stk_set_running(STK_INITIALIZED);
+        strcpy(buf, "Invalid Password.");
+        goto failed;
+    } else if (running == STK_ALREADY_LOGGIN) {
+        stk_set_running(STK_INITIALIZED);
+        strcpy(buf, "Already Logined in.");
+        goto failed;
+    } else if (running == STK_INITIALIZED) {
+        /* user cancle the login */
+        goto failed;
+    } else if (running == STK_CONNECTED) {
+        /* doing nothing, continue to below */
+    } else {
+        return TRUE;
+    }
+
+success:
+	/* it seems we donot need layout anymore, destory it */
+    gtk_widget_destroy(widgets->loginw.layout);
+    gtk_container_remove(GTK_CONTAINER(widgets->mainw), widgets->loginw.connlayout);
+
+    sprintf(buf, "stkclient:%d(%s)", client.uid, client.nickname);
+#if GTK_CHECK_VERSION(2,10,0)
+#if !GTK_CHECK_VERSION(2,16,0)
+    gtk_status_icon_set_tooltip(widgets->tray, buf);
+#else
+    gtk_status_icon_set_tooltip_text(widgets->tray, buf);
+#endif
+#endif
+
+    stk_buddywin_create(widgets);
+    stk_set_running(STK_RUNNING);
+
+	return FALSE;
+
+failed:
+    gtk_container_remove(GTK_CONTAINER(widgets->mainw), widgets->loginw.connlayout);
+    gtk_container_add(GTK_CONTAINER(widgets->mainw), widgets->loginw.layout);
+
+    if (buf[0] != '\0') {
+        stk_loginret_show(TRUE, buf, widgets->loginw.resultlabel);
+    }
+
+    gtk_widget_show_all(widgets->mainw);
+	return FALSE;
+}
+
+void stk_connectwin_create(StkWidget *widgets)
+{
+    int height;
+    GtkWidget *layout;
+    GtkWidget *image1, *image2, *btnimage;
+    GtkRequisition imgsize1, imgsize2;
+#ifdef LOGIN_STYLE_NEW
+    GtkToolItem *canclebtn;
+#else
+    GtkWidget *canclebtn;
+#endif
+
+    layout = gtk_fixed_new();
+    image1 = gtk_image_new_from_file(STK_BEATU_PNG);
+    image2 = gtk_image_new_from_file(STK_CONNECT_PNG);
+	btnimage = gtk_image_new_from_file(STK_CANCEL_PNG);
+    widgets->loginw.connlayout = layout;
+
+    gtk_widget_size_request(image1, &imgsize1);
+    gtk_fixed_put(GTK_FIXED(layout), image1, (STK_MAINWIN_WIDTH-imgsize1.width)/2, (STK_MAINWIN_HEIGHT-imgsize1.height)/2);
+
+    gtk_widget_size_request(image2, &imgsize2);
+    height = STK_MAINWIN_HEIGHT/2 + imgsize1.height/2 + imgsize2.height;
+    gtk_fixed_put(GTK_FIXED(layout), image2, (STK_MAINWIN_WIDTH-imgsize2.width)/2, height);
+
+
+#ifdef LOGIN_STYLE_NEW
+	canclebtn = gtk_tool_button_new(btnimage, "Login");
+    gtk_tool_item_set_is_important(canclebtn, TRUE);
+#else
+    canclebtn = gtk_button_new();
+    gtk_button_set_image(GTK_BUTTON(canclebtn), btnimage);
+#endif
+
+    g_signal_connect(G_OBJECT(canclebtn), "clicked", G_CALLBACK(stk_login_cancle), (gpointer)widgets);
+    gtk_fixed_put(GTK_FIXED(layout), GTK_WIDGET(canclebtn), (STK_MAINWIN_WIDTH-imgsize2.width)/2, height+imgsize2.height);
+
+    /* we may use layout again, make a ref, unref it if we really donot need it */
+    g_object_ref((gpointer)widgets->loginw.layout);
+
+    gtk_container_remove(GTK_CONTAINER(widgets->mainw), widgets->loginw.layout);
+    gtk_container_add(GTK_CONTAINER(widgets->mainw), layout);
+    gtk_widget_show_all(widgets->mainw);
+}
+
+void stk_loginbtn_pressed(GtkWidget *widget, StkWidget *widgets)
+{
     char buf[STK_DEFAULT_SIZE];
     char *username, *passwd, *serverip;
     int ret;
@@ -392,6 +576,7 @@ void stk_loginbtn_pressed(GtkWidget *widget, STKWIDGETS *widgets)
     passwd = (char *)gtk_entry_get_text(GTK_ENTRY(widgets->loginw.passtext));
     serverip = (char *)gtk_entry_get_text(GTK_ENTRY(widgets->loginw.servertext));
 
+    /* safety check */
     if (username[0] == '\0') {
         char *err = "Username is NULL\n";
         strcpy(buf, err);
@@ -415,66 +600,17 @@ void stk_loginbtn_pressed(GtkWidget *widget, STKWIDGETS *widgets)
     } else {
         strcpy(client.serverip, serverip);
     }
-
-    ret = stk_connect(&client);
-    if (ret == -1){
-        sprintf(buf, "STK Client %d connect error\n", client.uid);
-        goto error;
-    }
-
-    ret = stk_login(client.fd, sendbuf, STK_MAX_PACKET_SIZE, client.uid, client.pass);
-
-    if (ret == STK_CLIENT_LOGIN_SUCCESS){
-        stk_buddy buddy;
-
-        sprintf(buf, "STK Client %d login success.\n", client.uid);
-        client.state = STK_CLIENT_ONLINE;
-
-        memset(&buddy, 0 ,sizeof(stk_buddy));
-        ret = stk_send_getprofile(client.fd, sendbuf, STK_MAX_PACKET_SIZE, client.uid, client.uid, &buddy);
-        if (ret == -1){
-            sprintf(buf, "STK Client %d get profile failed.\n", client.uid);
-            goto error;
-        } else {
-            memcpy(client.nickname, buddy.nickname, STK_NICKNAME_SIZE);
-            memcpy(client.city, buddy.city,STK_CITY_SIZE);
-            client.phone = buddy.phone;
-            client.gender = buddy.gender;
-        }
-
-        ret = stk_send_getbuddylist(client.fd, sendbuf, STK_MAX_PACKET_SIZE, client.uid);
-        if (ret == -1){
-            sprintf(buf, "STK Client %d get buddy list failed.\n", client.uid);
-            goto error;
-        }
-        sprintf(buf, "stkclient:%d(%s)", client.uid, client.nickname);
-#if GTK_CHECK_VERSION(2,10,0)
-#if !GTK_CHECK_VERSION(2,16,0)
-        gtk_status_icon_set_tooltip(widgets->tray, buf);
-#else
-        gtk_status_icon_set_tooltip_text(widgets->tray, buf);
-#endif
-#endif
-
-        gtk_widget_destroy(widgets->loginw.layout);
-        stk_buddywin_create(widgets);
-        return;
-    } else if (ret == STK_CLIENT_LOGIN_ERROR){
-        sprintf(buf, "STK Client %d login failed.\n", client.uid);
-    } else if (ret == STK_CLIENT_LOGIN_INVALID_UID){
-        sprintf(buf, "STK Client %d unregistered.\n", client.uid);
-    } else if (ret == STK_CLIENT_LOGIN_INVALID_PASS){
-        sprintf(buf, "STK Client %d authenticate failed.\n", client.uid);
-    } else {
-        sprintf(buf, "STK Client %d login bad.\n", client.uid);
-    }
+    stk_set_running(STK_CONNECTE_REQ);
+	g_timeout_add(500, (GSourceFunc)stk_waiting, (gpointer)widgets); /* every 0.5s */
+    stk_connectwin_create(widgets);
+    return;
 
 error:
 
-    stk_message("Login Result", buf);
+    stk_loginret_show(TRUE, buf, widgets->loginw.resultlabel);
 }
 
-void stk_loginwin_create(STKWIDGETS *widgets)
+void stk_loginwin_create(StkWidget *widgets)
 {
     GtkWidget *layout;
     GtkWidget *userlabel;
@@ -483,10 +619,17 @@ void stk_loginwin_create(STKWIDGETS *widgets)
     GtkWidget *passtext;
     GtkWidget *serverlabel;
     GtkWidget *servertext;
-    GtkWidget *loginbutton;
+#ifdef LOGIN_STYLE_NEW
+    GtkToolItem *loginbtn;
+#else
+    GtkWidget *loginbtn;
+#endif
+    GtkWidget *loginimg;
     GtkAccelGroup *gag;
-    GtkWidget *image;
     GtkToolItem *toolitem;
+    GtkRequisition imgsize;
+    GtkWidget *image;
+    int width, height;
 
     layout = gtk_fixed_new();
     userlabel = gtk_label_new("Username:");
@@ -495,23 +638,57 @@ void stk_loginwin_create(STKWIDGETS *widgets)
     passtext = gtk_entry_new();
     serverlabel = gtk_label_new("Server IP:");
     servertext = gtk_entry_new();
-    loginbutton = gtk_button_new_with_label("Login");
+    loginimg = gtk_image_new_from_file(STK_LOGIN_PNG);
+    image = gtk_image_new_from_file(STK_BEATU_PNG);
+    widgets->loginw.resultlabel = gtk_label_new(NULL);
+
+#ifdef LOGIN_STYLE_NEW
+	loginbtn = gtk_tool_button_new(loginimg, "Login");
+    gtk_tool_item_set_is_important(loginbtn, TRUE);
+#else
+    /* I'm afraid we cannot set the color of button */
+    //loginbtn = gtk_button_new_with_label("   Login   ");
+    loginbtn = gtk_button_new();
+    gtk_button_set_image(GTK_BUTTON(loginbtn), loginimg);
+#endif
+
+#if 0
+#if !GTK_CHECK_VERSION(2,12,0)
+    GtkTooltips *tooltips;
+    tooltips = gtk_tooltips_new();
+#endif
 
     image = gtk_image_new_from_file(STK_CLOSE_PNG);
 	toolitem = gtk_tool_button_new(image, "Close");
+#if !GTK_CHECK_VERSION(2,12,0)
+    gtk_tool_item_set_tooltip(toolitem, tooltips, "Close", NULL);
+#else
     gtk_tool_item_set_tooltip_text(toolitem, "Close");
+#endif
     gtk_tool_item_set_is_important(toolitem, TRUE);
-    //gtk_container_set_border_width(GTK_CONTAINER(toolitem), 0); /* seems no need */
 	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_window_exit), (gpointer)widgets->tray);
 
     gtk_fixed_put(GTK_FIXED(layout), GTK_WIDGET(toolitem), 300-45, 0);
+#else
+    memset(&widgets->cbtn, 0, sizeof(ImageButton));
+	strcpy(widgets->cbtn.normal, STK_CLOSE_NORMAL_PNG);
+	strcpy(widgets->cbtn.on_enter, STK_CLOSE_HLIGHT_PNG);
+	strcpy(widgets->cbtn.on_press, STK_CLOSE_DOWN_PNG);
+	strcpy(widgets->cbtn.tips, "Close");
+
+    stk_create_imgbtn(&widgets->cbtn, stk_window_exit2, (gpointer)widgets->tray);
+    gtk_event_box_set_visible_window(GTK_EVENT_BOX(widgets->cbtn.event_box), FALSE);
+
+    gtk_widget_size_request(widgets->cbtn.image, &imgsize);
+    gtk_fixed_put(GTK_FIXED(layout), widgets->cbtn.event_box, STK_MAINWIN_WIDTH-imgsize.width, 0);
+#endif
 
 	widgets->loginw.layout = layout;
     widgets->loginw.usertext = usertext;
     widgets->loginw.passtext = passtext;
     widgets->loginw.servertext = servertext;
 
-    g_signal_connect(G_OBJECT(loginbutton), "clicked", G_CALLBACK(stk_loginbtn_pressed), (gpointer)widgets);
+    g_signal_connect(G_OBJECT(loginbtn), "clicked", G_CALLBACK(stk_loginbtn_pressed), (gpointer)widgets);
 
     gtk_entry_set_visibility(GTK_ENTRY(usertext), TRUE);
     gtk_entry_set_visibility(GTK_ENTRY(passtext), FALSE);
@@ -520,16 +697,28 @@ void stk_loginwin_create(STKWIDGETS *widgets)
     gtk_editable_set_editable(GTK_EDITABLE(passtext), TRUE);
     gtk_editable_set_editable(GTK_EDITABLE(servertext), TRUE);
 
-    gtk_fixed_put(GTK_FIXED(layout), userlabel, 80, 200);
-    gtk_fixed_put(GTK_FIXED(layout), usertext, 80, 220);
-    gtk_fixed_put(GTK_FIXED(layout), passlabel, 80, 250);
-    gtk_fixed_put(GTK_FIXED(layout), passtext, 80, 270);
-    gtk_fixed_put(GTK_FIXED(layout), serverlabel, 80, 300);
-    gtk_fixed_put(GTK_FIXED(layout), servertext, 80, 320);
-    gtk_fixed_put(GTK_FIXED(layout), loginbutton, 80, 350);
+    gtk_widget_size_request(image, &imgsize);
+	width = (STK_MAINWIN_WIDTH-imgsize.width)/2;
+    height = (STK_MAINWIN_HEIGHT-imgsize.height)/4;
+    gtk_fixed_put(GTK_FIXED(layout), image, width, height);
+    width += 20;
+    height += imgsize.height;
+    gtk_fixed_put(GTK_FIXED(layout), userlabel, width, height+20);
+    gtk_fixed_put(GTK_FIXED(layout), usertext, width, height+40);
+    gtk_fixed_put(GTK_FIXED(layout), passlabel, width, height+70);
+    gtk_fixed_put(GTK_FIXED(layout), passtext, width, height+90);
+    gtk_fixed_put(GTK_FIXED(layout), serverlabel, width, height+120);
+    gtk_fixed_put(GTK_FIXED(layout), servertext, width, height+140);
+    gtk_fixed_put(GTK_FIXED(layout), GTK_WIDGET(loginbtn), width, height+170);
+    gtk_fixed_put(GTK_FIXED(layout), widgets->loginw.resultlabel, width, height+220);
+
+    /* hide this, maybe not used at all. */
+    gtk_widget_hide(widgets->loginw.resultlabel);
 
     gag = gtk_accel_group_new();
     gtk_window_add_accel_group(GTK_WINDOW(widgets->mainw), gag);
-    gtk_widget_add_accelerator(loginbutton, "clicked", gag, GDK_Return, 0, GTK_ACCEL_VISIBLE); /* GDK_KEY_Return */
+    gtk_widget_add_accelerator(GTK_WIDGET(loginbtn), "clicked", gag, GDK_Return, 0, GTK_ACCEL_VISIBLE); /* GDK_KEY_Return */
+
+    gtk_container_add(GTK_CONTAINER(widgets->mainw), widgets->loginw.layout);
 }
 
