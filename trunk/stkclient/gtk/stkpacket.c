@@ -27,6 +27,12 @@ unsigned int token = 0;
 #define STK_SOCKET_RECV_TIMEOUT 1
 #define STK_SOCKET_SEND_TIMEOUT 5
 
+#if defined(WIN32)
+#define STK_SOCKET_BOTH SD_BOTH
+#elif defined(_LINUX_)
+#define STK_SOCKET_BOTH SHUT_RDWR
+#endif
+
 void stk_debug_print(char *buf, int len)
 {
     int i;
@@ -39,10 +45,9 @@ void stk_debug_print(char *buf, int len)
     g_print("\r\n");
 }
 
-#if defined(WIN32)
-
-int stk_init_socket(SOCKET *fd)
+int stk_init_socket()
 {
+#if defined(WIN32)
     WSADATA  Ws;
 
     /* Init Windows Socket */
@@ -51,45 +56,17 @@ int stk_init_socket(SOCKET *fd)
         stk_print("stk_init_socket: init socket error\n");
         return -1;
     }
-
-    return 0;
-}
-
-int stk_set_socket_timeout(SOCKET fd, int flag, int seconds)
-{
-    int timeout = 1000*seconds;
-    int ret;
-
-    if (flag == STK_FLAG_SENDTIMEO) {
-        ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout));
-    } else {
-        ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
-    }
-
-    return ret;
-}
-
 #elif defined(_LINUX_)
-
-int stk_init_socket(int *fd)
-{
-    return 0;
-}
-int stk_set_socket_timeout(int fd, int flag, int seconds)
-{
-    struct timeval timeout={seconds, 0};
-    int ret;
-
-    if (flag == STK_FLAG_SENDTIMEO) {
-        ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-    } else {
-        ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    }
-
-	return ret;
-}
-
 #endif
+    return 0;
+
+}
+
+void stk_clean_socket(socket_t fd)
+{
+    shutdown(fd, STK_SOCKET_BOTH);
+    close(fd);
+}
 
 int stk_connect(client_config *config)
 {
@@ -132,7 +109,7 @@ int stk_init_head(stkp_head *head, unsigned short cmd, unsigned int uid)
     head->stkp_flag = 0x0;
 }
 
-int stk_login(int fd, char *buf, int max_len, unsigned int uid, char *password)
+int stk_login(socket_t fd, char *buf, int max_len, unsigned int uid, char *password)
 {
     stkp_head *head = NULL;
     int len;
@@ -238,7 +215,7 @@ int stk_login(int fd, char *buf, int max_len, unsigned int uid, char *password)
 
 }
 
-int stk_send_getprofile(int fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy)
+int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
@@ -314,7 +291,7 @@ int stk_send_getprofile(int fd, char *buf, int max_len, unsigned int uid, unsign
     }
 }
 
-int stk_send_getbuddylist(int fd, char *buf, int max_len, unsigned int uid)
+int stk_send_getbuddylist(socket_t fd, char *buf, int max_len, unsigned int uid)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
@@ -400,7 +377,7 @@ int stk_send_getbuddylist(int fd, char *buf, int max_len, unsigned int uid)
 }
 
 
-int stk_send_msg(int fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int n_uid)
+int stk_send_msg(socket_t fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int n_uid)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
@@ -450,6 +427,8 @@ int stk_recv_msg(client_config *client)
             stk_print("stk_recv_msg: recv socket error\n");
             return STK_SOCKET_ERROR;
         } else if (len == 0) {
+            if (stk_get_running() == STK_EXITING)
+                return 0;
             stk_print("\n\nSTK Server close the socket, exiting...\n\n");
             return STK_SOCKET_CLOSED;
         }
@@ -461,7 +440,7 @@ int stk_recv_msg(client_config *client)
             || !STKP_TEST_FLAG(head->stkp_flag))
         {
             stk_print("#5. bad msg, drop packet.\n");
-            return -1;
+            continue;
         } else {
             unsigned short size;
             unsigned short cmd;

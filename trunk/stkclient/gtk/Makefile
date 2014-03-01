@@ -1,26 +1,28 @@
-# Project: STKClient
-# Makefile created by Dev-C++ 4.9.9.2
+#
+# Makefile for STK
+#
+#  Copyright (C) 2014 SixTeam
+#  All Rights Reserved
+#
 
-CPP  = g++.exe
-CC   = gcc.exe
-OBJ  = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
-LINKOBJ  = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
-LIBS =  -L"C:/Dev-Cpp/lib" $(shell pkg-config --libs gtk+-2.0) -lws2_32 -lwinmm -mwindows
-INCS =  -I"C:/Dev-Cpp/include" 
-CFLAGS = $(INCS) $(shell pkg-config --cflags gtk+-2.0)
-BIN  = stkclient.exe
-RM = rm -f
+CC      = gcc
+OBJ     = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
+LINKOBJ = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
+LIBS    = $(shell pkg-config --libs gtk+-2.0) -lgthread-2.0
+CFLAGS  = -D_LINUX_ $(shell pkg-config --cflags gtk+-2.0)
+BIN     = stkclient
+RM      = rm -f
 
 .PHONY: all all-before all-after clean clean-custom
 
-all: all-before stkclient.exe all-after
+all: all-before $(BIN) all-after
 
 
 clean: clean-custom
 	${RM} $(OBJ) $(BIN)
 
 $(BIN): $(OBJ)
-	$(CC) $(LINKOBJ) -o "stkclient.exe" $(LIBS)
+	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
 
 stkclient.o: stkclient.c
 	$(CC) -c stkclient.c -o stkclient.o $(CFLAGS)

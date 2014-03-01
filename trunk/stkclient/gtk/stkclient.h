@@ -64,6 +64,13 @@
 #define STK_ALREADY_LOGGIN 10
 #define STK_RUNNING        11
 #define STK_EXITING        12
+#define STK_SERVER_EXIT   13
+
+#if defined(WIN32)
+#define socket_t  SOCKET
+#elif defined(_LINUX_)
+#define socket_t  int
+#endif
 
 typedef struct{
     unsigned int uid;
@@ -71,11 +78,7 @@ typedef struct{
     unsigned char city[STK_CITY_SIZE];
     unsigned int phone;
     unsigned char gender;
-#if defined(WIN32)   
-    SOCKET fd;
-#elif defined(_LINUX_)
-    int fd;
-#endif
+    socket_t fd;
     int state;
     unsigned char pass[STK_PASS_SIZE];
     unsigned char serverip[STK_IPADDR_LENGTH];
