@@ -33,8 +33,6 @@ gboolean stk_window_hide2(GtkWidget *widget,  GdkEventButton *event, GtkWidget *
 /* if gtk_window_move() doesnot called before this, the position of window is decided by window manager */
 gboolean stk_window_show(GtkWidget *widget, GtkWidget *window)
 {
-    if (window == NULL) /* will never happened */
-        return FALSE;
     gtk_widget_show_all(window);
     /* set window toplevel, then set usertext as focus. For windows, it's necessary, for Linux, seems no need */
     gtk_window_present(GTK_WINDOW(window));
@@ -230,6 +228,24 @@ static void stk_buddy_show(GtkWidget *widget, gpointer data)
     stk_message("User", buf);
 }
 
+gboolean stk_check_socket(StkWidget *widgets)
+{
+    int running;
+
+    running = stk_get_running();
+
+    if (running == STK_SOCKET_ERR) {
+        /* socket err, maybe network is down */
+        stk_window_exit(NULL, widgets->tray);
+        return FALSE;
+    } else if (running == STK_SERVER_EXIT) {
+        /* server exit... */
+        stk_window_exit(NULL, widgets->tray);
+        return FALSE;
+    } else {
+        return TRUE;
+	}
+}
 
 static gboolean stk_buddy_lclick(GtkWidget *widget, GdkEventButton *event)
 {
@@ -379,7 +395,7 @@ void stk_buddywin_create(StkWidget *widgets)
     stk_tree_setup(tree);
     gtk_widget_add_events(tree, GDK_BUTTON_PRESS_MASK);
     g_signal_connect(G_OBJECT(tree), "button-press-event", G_CALLBACK(stk_buddy_lclick), NULL);
-    gtk_container_add(GTK_CONTAINER (frame), tree);
+    gtk_container_add(GTK_CONTAINER(frame), tree);
 
     /* init tools, chat voice video  */
     image = gtk_image_new_from_file(STK_CHAT_PNG);
@@ -433,6 +449,8 @@ void stk_buddywin_create(StkWidget *widgets)
     }
 
     widgets->treev= tree;
+
+	g_timeout_add(2000, (GSourceFunc)stk_check_socket, (gpointer)widgets); /* every 2s */
 
     gtk_window_present(GTK_WINDOW(widgets->mainw));
     gtk_widget_show_all(widgets->mainw);

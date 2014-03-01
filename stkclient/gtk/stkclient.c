@@ -40,7 +40,7 @@ void stk_socket(client_config *client)
     int running;
     int ret;
 
-    ret = stk_init_socket(&client->fd);
+    ret = stk_init_socket();
     if (ret != 0) {
         stk_message("Socket Init", "stk_init_socket error");
         exit(0);
@@ -121,12 +121,18 @@ connect:
     while (1) {
 		running = stk_get_running();
         if (running == STK_EXITING) {
-            goto exit;
+            return;
+            //goto exit;
         } else if (running != STK_RUNNING) {
             g_usleep(500000);
         } else {
             /* receive message from server, this will be blocked */
-            stk_recv_msg(client);
+            ret = stk_recv_msg(client);
+            if (ret == STK_SOCKET_ERROR) {
+                stk_set_running(STK_CONNECTE_ERR);
+            } else if (ret == STK_SOCKET_CLOSED) {
+                stk_set_running(STK_SERVER_EXIT);
+            }
         }
     }
 
@@ -192,8 +198,17 @@ int main (int argc,char *argv[])
      * we cann't set stk_socket to join, because it is blocked, if we wait, it will never end
      * we can use select to do this, maybe later.
      */
-    g_thread_join (thread1);
-    //g_thread_join (thread2);
+    g_thread_join(thread1);
+    //g_thread_join(thread2);
+
+    /* 
+     * On linux, when program exit, it will close all opened socket,
+     * but on Windows will not.
+     *
+     */
+#if defined(WIN32)
+    stk_clean_socket(client.fd);
+#endif
 
     return 0;
 }

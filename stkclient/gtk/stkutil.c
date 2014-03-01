@@ -15,7 +15,7 @@
 void stk_message(char *title, const char *msg)
 {
     GtkWidget *dialog, *label, *image, *hbox;;
-    char t[STK_DEFAULT_SIZE] = "STK Client";
+    char t[STK_DEFAULT_SIZE] = "stkclient";
     GtkWidget *content_area;
 
     if (title != NULL) {
