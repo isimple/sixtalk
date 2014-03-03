@@ -320,10 +320,10 @@ void stk_handle_signal(int signal)
     tid = pthread_self();
     client = stk_get_user_by_tid(tid);
 
-	if (client == NULL) {
+    if (client == NULL) {
         printf("What happened, it's impossible...\n");
         return;
-	}
+    }
 
     if (client->stkc_state == STK_CLIENT_OFFLINE) {
         printf("Oops, STK Client not online, hope not go here...\n");

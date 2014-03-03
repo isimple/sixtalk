@@ -89,20 +89,20 @@ connect:
                     }
                     stk_set_running(STK_CONNECTED);
                     break;
-				} 
+                } 
                 else if (ret == STK_CLIENT_LOGIN_ERROR){
                     stk_set_running(STK_SOCKET_ERR);
                     goto connect;
                 }
-				else if (ret == STK_CLIENT_LOGIN_INVALID_UID){
+                else if (ret == STK_CLIENT_LOGIN_INVALID_UID){
                     stk_set_running(STK_USERID_ERR);
                     goto connect;
                 }
-				else if (ret == STK_CLIENT_LOGIN_INVALID_PASS){
+                else if (ret == STK_CLIENT_LOGIN_INVALID_PASS){
                     stk_set_running(STK_PASSWORD_ERR);
                     goto connect;
                 }
-				else if (ret == STK_CLIENT_LOGIN_AGAIN){
+                else if (ret == STK_CLIENT_LOGIN_AGAIN){
                     stk_set_running(STK_ALREADY_LOGGIN);
                     goto connect;
                 }
@@ -112,14 +112,14 @@ connect:
                 }
             } 
         }
-		else {
+        else {
             g_usleep(500000);
         }
     }
 
     /* In fact, this loop will go into stk_recv_msg then blocked~~~ */
     while (1) {
-		running = stk_get_running();
+        running = stk_get_running();
         if (running == STK_EXITING) {
             return;
             //goto exit;
@@ -161,7 +161,7 @@ void stk_main(StkWidget *widgets)
     gtk_widget_show_all(widgets->mainw);
 
     /* set window toplevel, then set usertext as focus. For windows, it's necessary, for Linux, seems no need */
-	gtk_window_present(GTK_WINDOW(widgets->mainw));
+    gtk_window_present(GTK_WINDOW(widgets->mainw));
 #if 0
 #if GTK_CHECK_VERSION(2,18,0)
     gtk_widget_set_can_focus(widgets.loginw.usertext, GTK_CAN_FOCUS);

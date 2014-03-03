@@ -208,7 +208,7 @@ stk_client *stk_get_next(stk_client *client)
         next_list = client->list.next;
         if (next_list == &stk_users) {
             next_list = next_list->next;
-		}
+        }
         next_client = list_entry(next_list, stk_client, list);
     }
     return next_client;
@@ -222,7 +222,7 @@ int stk_user_offline(stk_client *client)
         client->stkc_fd = -1;
         client->stkc_state = STK_CLIENT_OFFLINE;
         client->stkc_data = NULL;
-		return 0;
+        return 0;
     }
 }
 

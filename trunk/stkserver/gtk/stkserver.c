@@ -11,7 +11,7 @@
 #include <string.h>
 
 #include "stk.h"
-	
+
 void stk_socket()
 {
     socket_t server_fd, conn_fd;
@@ -44,7 +44,6 @@ void stk_socket()
 
     }
 
-    //pthread_join();
     close(server_fd);
 
 }

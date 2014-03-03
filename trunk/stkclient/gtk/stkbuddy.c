@@ -124,15 +124,15 @@ void stk_get_buddyinfo(stk_buddy *buddy, char *buf)
     }
 
     sprintf(tmp, "Uid:\t\t\t%d\n", buddy->uid);
-	strcat(buf, tmp);
+    strcat(buf, tmp);
     sprintf(tmp, "Nickname:\t%s\n", buddy->nickname);
-	strcat(buf, tmp);
+    strcat(buf, tmp);
     sprintf(tmp, "City:\t\t%s\n", buddy->city);
-	strcat(buf, tmp);
+    strcat(buf, tmp);
     sprintf(tmp, "Phone:\t\t%d\n", buddy->phone);
-	strcat(buf, tmp);
+    strcat(buf, tmp);
     sprintf(tmp, "Gender:\t\t%s\n", (buddy->gender == STK_GENDER_BOY)?"boy":"girl");
-	strcat(buf, tmp);
+    strcat(buf, tmp);
 
     return;
 }
@@ -197,31 +197,31 @@ int stk_add_msg(stk_buddy *buddy, char *data, int size)
     if (chatmsg == NULL) {
         printf("Error while malloc for chatmsg\n");
         return -1;
-	}
+    }
 
     chatmsg->timestamp = (char *)malloc(STK_DEFAULT_SIZE);
     if (chatmsg->timestamp == NULL) {
         printf("Error while malloc for chatmsg->timestamp\n");
-		free(chatmsg);
+        free(chatmsg);
         return -1;
-	}
-	
+    }
+
     chatmsg->msg = (char *)malloc(size);
     if (chatmsg->msg == NULL) {
         printf("Error while malloc for chatmsg->msg\n");
         free(chatmsg->timestamp);
         free(chatmsg);
         return -1;
-	}
+    }
 
     chatmsg->msg_len = size;
     stk_get_timestamp(chatmsg->timestamp);
     memcpy(chatmsg->msg, data, size);
     chatmsg->next = chatmsg;
 
-	if (buddy->chatmsg == NULL || buddy->msg_num == 0) {
+    if (buddy->chatmsg == NULL || buddy->msg_num == 0) {
         buddy->chatmsg = chatmsg;
-	} else {
+    } else {
         tmp = buddy->chatmsg;
         while(tmp != tmp->next) {
             tmp = tmp->next;
@@ -241,19 +241,19 @@ int stk_get_msg(stk_buddy *buddy, char *data, int *size, char *ts)
         return -1;
 
     tmp = buddy->chatmsg;
-	if(tmp == NULL) {
+    if(tmp == NULL) {
         return -1;
     }
 
-	*size = tmp->msg_len;
-	memcpy(data, tmp->msg, tmp->msg_len);
-	strcpy(ts, tmp->timestamp);
+    *size = tmp->msg_len;
+    memcpy(data, tmp->msg, tmp->msg_len);
+    strcpy(ts, tmp->timestamp);
     buddy->chatmsg = tmp->next;
     buddy->msg_num--;
 
     if (buddy->msg_num == 0) {
         buddy->chatmsg == NULL;
-	}
+    }
 
     free(tmp->msg);
     free(tmp->timestamp);

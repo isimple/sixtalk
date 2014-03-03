@@ -141,6 +141,37 @@ stk_client *stk_parse_packet(char *buf,int size, stk_data *data)
     return client;
 }
 
+gboolean stk_deliver_msg(stk_client *client)
+{
+    char msg[STK_MAX_PACKET_SIZE] = {0};
+    int len;
+    stkp_head *head = NULL;
+
+    if (client == NULL) {
+        printf("What happened, it's impossible...\n");
+        return FALSE;
+    }
+
+    if (client->stkc_state == STK_CLIENT_OFFLINE) {
+        printf("Oops, stkclient not online, hope not go here...\n");
+        return FALSE;
+    }
+
+    while (client->msg_num > 0) {
+        if (stk_get_msg(client, msg, &len) == -1)
+            break;
+        head = (stkp_head *)msg;
+        head->stkp_flag = 0x1;
+        head->stkp_token = htonl(client->stkc_token);
+
+        if (len != send(client->stkc_fd, msg, len, 0)) {
+            printf("stk_deliver_msg: deliver msg error\n");
+            break;
+        }
+    }
+
+    return FALSE;
+}
 
 int stk_reqlogin_ack(socket_t fd, unsigned int uid, char *buf)
 {
@@ -190,7 +221,7 @@ int stk_login_ack(socket_t fd, unsigned int uid, char *buf)
         } else if (!memcmp(tmp, pass, STK_PASS_SIZE)) {
             *tmp = STK_LOGIN_SUCCESS;
             client->stkc_fd = fd;
-            //client->stkc_tid= pthread_self();
+            //client->stkc_tid = g_thread_self();
             client->stkc_state = STK_CLIENT_ONLINE;
             stk_print_user(client);
             /* ask gui to update */
@@ -334,64 +365,13 @@ int stk_sendmsg_ack(stk_client *client, char *buf, int bytes)
         /* user offline, need to do something? */
         return 0;
     } else if (user->stkc_state == STK_CLIENT_ONLINE){
-        data = (char *)malloc(bytes);
-        memcpy(data, buf, bytes);
-        //user->stkc_data->uid = ntohl(head->stkp_uid);
-        user->stkc_data->cmd = STKP_CMD_SEND_MSG;
-        user->stkc_data->data = data;
-        user->stkc_data->len = bytes;
-        //pthread_kill(user->stkc_tid, SIGUSR1);
+        if (!stk_add_msg(user, buf, bytes)) {
+            g_idle_add((GSourceFunc)stk_deliver_msg, (gpointer)user);;
+        }
+        return 0;
     }
 }
 
-#if 0
-void stk_handle_signal(int signal)
-{
-    pthread_t tid;
-    char buf[STK_MAX_PACKET_SIZE] = {0};
-    stk_client *client = NULL;
-    stkp_head *head = NULL;
-    unsigned short cmd;
-    char *tmp = NULL;
-    int len;
-
-    if(signal != SIGUSR1) {
-        return;
-    }
-
-    tid = pthread_self();
-    client = stk_get_user_by_tid(tid);
-
-	if (client == NULL) {
-        printf("What happened, it's impossible...\n");
-        return;
-	}
-
-    if (client->stkc_state == STK_CLIENT_OFFLINE) {
-        printf("Oops, stkclient not online, hope not go here...\n");
-        return;
-    }
-
-    len = client->stkc_data->len;
-    memcpy(buf, client->stkc_data->data, len);
-
-    /* Any usage? */
-    cmd = client->stkc_data->cmd;
-
-    /* stk_sendmsg_ack malloc, free here */
-    free(client->stkc_data->data);
-
-    head = (stkp_head *)buf;
-    head->stkp_flag = 0x1;
-    head->stkp_token = htonl(client->stkc_token);
-
-    if (len != send(client->stkc_fd, buf, len, 0)) {
-        printf("stk_handle_signal: send msg error\n");
-        return;
-    }
-    return;
-}
-#endif
 void stk_socket_thread(void *arg)
 {
     socket_t fd;
@@ -403,7 +383,6 @@ void stk_socket_thread(void *arg)
     memcpy(&fd, arg, sizeof(fd));
 
     data = (stk_data *)malloc(sizeof(stk_data));
-    //signal(SIGUSR1, stk_handle_signal);
 
     while(1) {
         bytes = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
@@ -416,12 +395,12 @@ void stk_socket_thread(void *arg)
         } else if (bytes == 0){
             printf("stk_socket_thread: peer socket has been shutdown.\n");
             if (client != NULL) {
-				stk_user_offline(client);
+                stk_user_offline(client);
                 g_idle_add((GSourceFunc)stk_tree_update, (gpointer)client);
             }
             break;
         } 
-	
+
         memset(data, 0, sizeof(stk_data));
         client = stk_parse_packet(buf, bytes, data);
         if (client != NULL ){
@@ -463,7 +442,7 @@ void stk_socket_thread(void *arg)
             break;
         }
     }
-	free(data);
+    free(data);
     close(fd);
 }
 

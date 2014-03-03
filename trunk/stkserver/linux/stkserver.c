@@ -41,12 +41,12 @@ void *stk_main(void *arg)
         } else if (bytes == 0){
             printf("peer socket has been shutdown.\n");
             if (client != NULL) {
-				stk_user_offline(client);
+                stk_user_offline(client);
                 client->stkc_state = STK_CLIENT_OFFLINE;
             }
             break;
         } 
-	
+
         memset(data, 0, sizeof(stk_data));
         client = stk_parse_packet(buf, bytes, data);
         if (client != NULL ){
@@ -88,7 +88,7 @@ void *stk_main(void *arg)
             break;
         }
     }
-	free(data);
+    free(data);
     close(fd);
 }
 
@@ -97,7 +97,7 @@ int main(int argc, char argv[])
     int server_fd;
     int conn_fd;
     pthread_t tid;
-	int err;
+    int err;
 
     stk_init_user();
 

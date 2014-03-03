@@ -61,7 +61,7 @@ static void stk_chatwin_create(stk_buddy *buddy)
     GtkToolItem *toolitem;
     GtkAccelGroup *gag;
 #if !GTK_CHECK_VERSION(2,12,0)
-	GtkTooltips *tooltips;
+    GtkTooltips *tooltips;
 #endif
 
     sprintf(buf, "Chat With %s", buddy->nickname);
@@ -73,9 +73,9 @@ static void stk_chatwin_create(stk_buddy *buddy)
 
     /* set chat window background color */
     gdk_color_parse(MAIN_COLRO_STRING, &color);
-	gtk_widget_modify_bg(buddy->chat.window, GTK_STATE_NORMAL, &color);
+    gtk_widget_modify_bg(buddy->chat.window, GTK_STATE_NORMAL, &color);
 
-	/* "quit" button */
+    /* "quit" button */
     g_signal_connect(G_OBJECT(buddy->chat.window), "destroy", G_CALLBACK(stk_chatwin_close), (gpointer)buddy);
 
     buddy->chat.toolbox = gtk_hbox_new(FALSE, 0);
@@ -85,30 +85,30 @@ static void stk_chatwin_create(stk_buddy *buddy)
 #endif
 
     image = gtk_image_new_from_file(STK_CHAT_PNG);
-	toolitem = gtk_tool_button_new(image, "Chat");
+    toolitem = gtk_tool_button_new(image, "Chat");
 #if !GTK_CHECK_VERSION(2,12,0)
     gtk_tool_item_set_tooltip(toolitem, tooltips, "Chat", NULL);
 #else
     gtk_tool_item_set_tooltip_text(toolitem, "Chat");
 #endif
-	gtk_tool_item_set_is_important(toolitem, TRUE);
-	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_chat_request), (gpointer)buddy);
+    gtk_tool_item_set_is_important(toolitem, TRUE);
+    g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_chat_request), (gpointer)buddy);
     gtk_box_pack_start(GTK_BOX(buddy->chat.toolbox), GTK_WIDGET(toolitem), FALSE, FALSE, 0);
 
     image = gtk_image_new_from_file(STK_VOICE_PNG);
-	toolitem = gtk_tool_button_new(image, "Voice");
+    toolitem = gtk_tool_button_new(image, "Voice");
 #if !GTK_CHECK_VERSION(2,12,0)
     gtk_tool_item_set_tooltip(toolitem, tooltips, "Voice", NULL);
 #else
     gtk_tool_item_set_tooltip_text(toolitem, "Voice");
 #endif
-	gtk_tool_item_set_is_important(toolitem, TRUE);
-	g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_voice_request), (gpointer)buddy);
+    gtk_tool_item_set_is_important(toolitem, TRUE);
+    g_signal_connect(G_OBJECT(toolitem), "clicked", G_CALLBACK(stk_voice_request), (gpointer)buddy);
     gtk_box_pack_start(GTK_BOX(buddy->chat.toolbox), GTK_WIDGET(toolitem), FALSE, FALSE, 0);
 
     image = gtk_image_new_from_file(STK_VIDEO_PNG);
-	toolitem = gtk_tool_button_new(image, "Video");
-	gtk_tool_item_set_is_important(toolitem, TRUE);
+    toolitem = gtk_tool_button_new(image, "Video");
+    gtk_tool_item_set_is_important(toolitem, TRUE);
 #if !GTK_CHECK_VERSION(2,12,0)
     gtk_tool_item_set_tooltip(toolitem, tooltips, "Video", NULL);
 #else
@@ -210,9 +210,9 @@ gboolean stk_chatwin_display(stk_buddy *buddy)
 {
     GtkTextIter end;
     GtkTextMark *endmark;
-    char buf[STK_MAX_SIZE] = {0};
+    char buf[STK_DEFAULT_SIZE] = {0};
     char timestamp[STK_DEFAULT_SIZE] = {0};
-    char msg[STK_MAX_SIZE] = {0};
+    char msg[STK_MAX_PACKET_SIZE] = {0};
     int msg_len;
 
     if (!buddy->chat.show)
@@ -240,14 +240,14 @@ gboolean stk_chatwin_display(stk_buddy *buddy)
     //gtk_window_get_position();
     gtk_window_present(GTK_WINDOW(buddy->chat.window));
     gtk_widget_show_all(buddy->chat.window);
-	return FALSE;
+    return FALSE;
 }
 
 static void stk_msg_show(stk_buddy *buddy, char *text)
 {
     GtkTextIter start,end;
     GtkTextMark *endmark;
-    char buf[STK_MAX_SIZE] = {0};
+    char buf[STK_MAX_PACKET_SIZE] = {0};
     char tmp[STK_DEFAULT_SIZE] = {0};
 
     /* clean input text area */
@@ -297,7 +297,7 @@ gboolean stk_msg_send(GtkWidget *widget, stk_buddy *buddy)
         /* If there is no input,do nothing but return */
         if(strcmp(text,"")!=0)
         {
-            stk_send_msg(client.fd, sendbuf, STK_MAX_SIZE, text, strlen(text), client.uid, buddy->uid);
+            stk_send_msg(client.fd, sendbuf, STK_MAX_PACKET_SIZE, text, strlen(text), client.uid, buddy->uid);
             stk_msg_show(buddy, text);
         } else {
             stk_message(NULL, "Message should not NULL...\n");
