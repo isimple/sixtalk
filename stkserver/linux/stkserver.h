@@ -42,25 +42,25 @@
 #define STK_NULL_POINTER       -1
 
 typedef struct{
-    unsigned int uid;
+    unsigned int   uid;
     unsigned short cmd;
-    char *data;
-    int len;
+    char           *data;
+    int            len;
 }stk_data;
 
 typedef struct{
     struct list_head list;
-    int stkc_fd;
-    pthread_t stkc_tid;
-    stk_data *stkc_data;
-    int stkc_state;
-    unsigned int  stkc_token;
     unsigned int  stkc_uid;
     unsigned char stkc_nickname[STK_NICKNAME_SIZE];
     unsigned char stkc_pass[STK_PASS_SIZE];
     unsigned char stkc_city[STK_CITY_SIZE];
     unsigned int  stkc_phone;
     unsigned char stkc_gender;
+    unsigned int  stkc_token;
+    int           stkc_fd;
+    int           stkc_state;
+    pthread_t     stkc_tid;
+    stk_data      *stkc_data;
 }stk_client;
 
 #endif /* _STKSERVER_H_ */

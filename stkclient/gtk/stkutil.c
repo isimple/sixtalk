@@ -63,8 +63,8 @@ void stk_get_timestamp(char *str)
     if(str == NULL) {
          printf("Are U Joking with me?\n");
          return;
-	}
-	
+    }
+
     time(&timep);
     p = localtime(&timep); 
     sprintf(str, "%d-%d-%d %02d:%02d:%02d", 1900 + p->tm_year, 1 + p->tm_mon, p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
@@ -135,13 +135,13 @@ void stk_create_imgbtn(ImageButton *ib, gpointer func, gpointer data)
 
     gtk_widget_add_events(ib->event_box, GDK_BUTTON_PRESS_MASK);
     g_signal_connect(G_OBJECT(ib->event_box), "button_press_event", G_CALLBACK(on_button_press), (gpointer)ib);
-	
+
     gtk_widget_add_events(ib->event_box, GDK_BUTTON_RELEASE_MASK);
     g_signal_connect(G_OBJECT(ib->event_box), "button_release_event", G_CALLBACK(func), data);
-	
+
     gtk_widget_add_events(ib->event_box, GDK_ENTER_NOTIFY_MASK);
     g_signal_connect(G_OBJECT(ib->event_box), "enter_notify_event", G_CALLBACK(on_enter_notify), (gpointer)ib);
-	
+
     gtk_widget_add_events(ib->event_box, GDK_LEAVE_NOTIFY_MASK);
     g_signal_connect(G_OBJECT(ib->event_box), "leave_notify_event", G_CALLBACK(on_leave_notify), (gpointer)ib);
     return;
@@ -153,7 +153,7 @@ void stk_movement(StkWidget widgets)
 
     /* check positon of move widget put in fixed container */
     x = 0;
-	y = 20;
+    y = 20;
     toward = 1;
 
     while(1) {
@@ -214,6 +214,6 @@ static stk_buddy *get_buddy_from_tree(GtkWidget *widget)
     }
 
     return NULL;
-}	
+}
 #endif
 

@@ -108,11 +108,11 @@ stk_buddy *stk_get_next(stk_buddy *buddy)
         next_list = buddy->list.next;
         if (next_list == &stk_buddys) {
             next_list = next_list->next;
-		}
+        }
         next_buddy = list_entry(next_list, stk_buddy, list);
     }
 
-	return next_buddy;
+    return next_buddy;
 }
 
 int stk_print_buddy(stk_buddy *buddy)

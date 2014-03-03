@@ -47,26 +47,35 @@
 #define socket_t  int
 #endif
 
+/* notice, msg include stkp head!! */
+struct chat_message{
+    int  msg_len;
+    char *msg;
+    struct chat_message *next;
+};
+
 typedef struct{
-    unsigned int uid;
+    unsigned int   uid;
     unsigned short cmd;
-    char *data;
-    int len;
+    char           *data;
+    int            len;
 }stk_data;
 
 typedef struct{
     struct list_head list;
-    socket_t stkc_fd;
-    GThread *stkc_tid;
-    stk_data *stkc_data;
-    int stkc_state;
-    unsigned int  stkc_token;
     unsigned int  stkc_uid;
     unsigned char stkc_nickname[STK_NICKNAME_SIZE];
     unsigned char stkc_pass[STK_PASS_SIZE];
     unsigned char stkc_city[STK_CITY_SIZE];
     unsigned int  stkc_phone;
     unsigned char stkc_gender;
+    unsigned int  stkc_token;
+    socket_t      stkc_fd;
+    int           stkc_state;
+    GThread       *stkc_tid;
+    stk_data      *stkc_data;
+    int           msg_num;
+    struct chat_message *chatmsg;
 }stk_client;
 
 #endif /* _STKSERVER_H_ */

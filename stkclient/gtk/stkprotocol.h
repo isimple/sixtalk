@@ -23,7 +23,7 @@ enum {
     STKP_CMD_REPLY_MSG       = 0x0009,
 };
 
-#define STKP_TEST_FLAG(x) (x&0x1)
+#define STKP_TEST_FLAG(x)      (x&0x1)
 
 #define STKP_MAGIC             0x5354
 #define STKP_VERSION           0x0001
@@ -41,10 +41,10 @@ typedef struct{
     unsigned short stkp_version;
     unsigned short stkp_cmd;
     unsigned short stkp_sid;
-    unsigned int stkp_uid;
-    unsigned int stkp_token;
-    unsigned char stkp_reserve;
-    unsigned char stkp_flag;
+    unsigned int   stkp_uid;
+    unsigned int   stkp_token;
+    unsigned char  stkp_reserve;
+    unsigned char  stkp_flag;
     unsigned short stkp_length;
 }stkp_head;
 

@@ -64,7 +64,7 @@
 #define STK_ALREADY_LOGGIN 10
 #define STK_RUNNING        11
 #define STK_EXITING        12
-#define STK_SERVER_EXIT   13
+#define STK_SERVER_EXIT    13
 
 #if defined(WIN32)
 #define socket_t  SOCKET
@@ -73,19 +73,19 @@
 #endif
 
 typedef struct{
-    unsigned int uid;
+    unsigned int  uid;
     unsigned char nickname[STK_NICKNAME_SIZE];
     unsigned char city[STK_CITY_SIZE];
-    unsigned int phone;
+    unsigned int  phone;
     unsigned char gender;
-    socket_t fd;
-    int state;
     unsigned char pass[STK_PASS_SIZE];
     unsigned char serverip[STK_IPADDR_LENGTH];
+    socket_t fd;
+    int state;
 }client_config;
 
 struct chat_message{
-    int msg_len;
+    int  msg_len;
     char *timestamp;
     char *msg;
     struct chat_message *next;
@@ -105,10 +105,10 @@ typedef struct{
 }chat_widgets;
 
 typedef struct{
-    unsigned int uid;
+    unsigned int  uid;
     unsigned char nickname[STK_NICKNAME_SIZE];
     unsigned char city[STK_CITY_SIZE];
-    unsigned int phone;
+    unsigned int  phone;
     unsigned char gender;
     struct list_head list;
     int state;

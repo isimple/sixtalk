@@ -43,6 +43,7 @@ int stk_init_socket(void);
 void stk_clean_socket(void);
 int stk_server_socket(void);
 stk_client *stk_parse_packet(char *buf, int size, stk_data *data);
+gboolean stk_deliver_msg(stk_client *client);
 int stk_reqlogin_ack(socket_t fd, unsigned int uid, char *buf);
 int stk_login_ack(socket_t fd, unsigned int uid, char *buf);
 int stk_keepalive_ack(stk_client *client, char *buf);
@@ -50,7 +51,6 @@ int stk_getuser_ack(stk_client *client, char *buf);
 int stk_getonlineuser_ack(stk_client *client, char *buf);
 int stk_getinfo_ack(stk_client *client, char *buf);
 int stk_sendmsg_ack(stk_client *client, char *buf, int bytes);
-void stk_handle_signal(int signal);
 void stk_socket_thread(void *arg);
 
 
@@ -64,6 +64,9 @@ stk_client *stk_find_user(unsigned int uid);
 stk_client *stk_find_user(unsigned int uid);
 stk_client *stk_get_next(stk_client *client);
 //stk_client *stk_get_user_by_tid(pthread_t tid);
+int stk_init_msg(struct chat_message *chatmsg);
+int stk_add_msg(stk_client *client, char *data, int size);
+int stk_get_msg(stk_client *client, char *data, int *size);
 
 
 #endif /* _STK_H_ */

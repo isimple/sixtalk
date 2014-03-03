@@ -23,7 +23,7 @@ enum {
     STKP_CMD_REPLY_MSG       = 0x0009,
 };
 
-#define STKP_TEST_FLAG(x) (x&0x1)
+#define STKP_TEST_FLAG(x)      (x&0x1)
 
 #define STKP_MAGIC             0x5354
 #define STKP_VERSION           0x0001

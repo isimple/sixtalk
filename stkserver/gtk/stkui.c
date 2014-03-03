@@ -40,7 +40,7 @@ GtkWidget *stk_window_create()
     /*
      * set main window attribution
      */
-	/* not to display the window in the task bar, only works under Linux, gtk bugs?  */
+    /* not to display the window in the task bar, only works under Linux, gtk bugs?  */
 #if !GTK_CHECK_VERSION(2,2,0)
     gtk_window_set_skip_taskbar_hint(GTK_WINDOW(window),TRUE);
 #else
@@ -56,8 +56,8 @@ GtkWidget *stk_window_create()
 
     /* set window background color */
     gdk_color_parse(MAIN_COLRO_STRING, &color);
-	gtk_widget_modify_bg(window, GTK_STATE_NORMAL, &color);
-	
+    gtk_widget_modify_bg(window, GTK_STATE_NORMAL, &color);
+
     gtk_window_set_icon(GTK_WINDOW(window), gdk_pixbuf_new_from_file(STK_ICON_PNG, NULL));
 
     g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -96,7 +96,7 @@ gboolean stk_tree_update(stk_client *client)
         g_value_set_string(&v, buf);
         gtk_list_store_set_value(GTK_LIST_STORE(model), &iter, STK_STATUS_COL, &v);
     }
-	
+
     return FALSE;
 }
 

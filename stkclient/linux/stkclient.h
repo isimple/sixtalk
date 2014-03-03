@@ -50,20 +50,20 @@
 #define STK_CLIENT_TIMEOUT      5
 
 typedef struct{
-    unsigned int uid;
+    unsigned int  uid;
     unsigned char nickname[STK_NICKNAME_SIZE];
     unsigned char city[STK_CITY_SIZE];
-    unsigned int phone;
+    unsigned int  phone;
     unsigned char gender;
-    int fd;
     unsigned char pass[STK_PASS_SIZE];
+    int fd;
 }client_config;
 
 typedef struct{
-    unsigned int uid;
+    unsigned int  uid;
     unsigned char nickname[STK_NICKNAME_SIZE];
     unsigned char city[STK_CITY_SIZE];
-    unsigned int phone;
+    unsigned int  phone;
     unsigned char gender;
     struct list_head list;
 }stk_buddy;

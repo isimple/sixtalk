@@ -101,7 +101,7 @@ char* stk_linux_analyze_wav(char *fname, wav_t *wav)
 
     /* now, read wav data into buf */
     wavbuf = (char *)malloc(wav->data_size);
-	if(wavbuf == NULL) {
+    if(wavbuf == NULL) {
         perror("malloc for wav data error");
         fclose(fp);
         return NULL;
@@ -113,7 +113,7 @@ char* stk_linux_analyze_wav(char *fname, wav_t *wav)
         printf("fread wav data error\n");
         free(wavbuf);
         wavbuf = NULL;
-	}
+    }
 
     fclose(fp);
     return wavbuf;

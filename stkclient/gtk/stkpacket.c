@@ -444,7 +444,7 @@ int stk_recv_msg(client_config *client)
         } else {
             unsigned short size;
             unsigned short cmd;
-            char data[STK_MAX_SIZE] = {0};
+            char data[STK_MAX_PACKET_SIZE] = {0};
             stk_buddy *buddy;
 
             cmd = ntohs(head->stkp_cmd);

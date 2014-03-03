@@ -54,7 +54,7 @@ int stk_login(int fd, char *buf, int max_len, unsigned int uid)
 
     len = htons(STK_DATA_ZERO_LENGTH);
     memcpy(buf+sizeof(stkp_head)-2, &len, 2);
-	
+
     len = sizeof(stkp_head);
     buf[len++] = STKP_PACKET_TAIL;
 
@@ -322,7 +322,7 @@ int stk_send_msg(int fd, char *buf, int max_len, char *data, int data_len, unsig
     uid_n = htonl(n_uid);
     memcpy(tmp, &uid_n, STK_ID_LENGTH);
 
-	tmp += STK_ID_LENGTH;
+    tmp += STK_ID_LENGTH;
     memcpy(tmp, data, data_len);
 
     len = STK_ID_LENGTH+data_len+sizeof(stkp_head);
@@ -385,11 +385,11 @@ int stk_handle_msg(client_config *client, char *buf)
             if (buddy == NULL) 
                 printf("Bad buddy!!\n");
             else {
-            fflush(stdout);
-			printf("\n====================================================\n");
-			printf("%s talk to %s: %s\n", buddy->nickname, client->nickname, data);
-			printf("====================================================\n");
-			fflush(stdout);
+                fflush(stdout);
+                printf("\n====================================================\n");
+                printf("%s talk to %s: %s\n", buddy->nickname, client->nickname, data);
+                printf("====================================================\n");
+                fflush(stdout);
             }
             break;
         default:
