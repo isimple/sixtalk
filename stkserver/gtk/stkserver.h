@@ -13,22 +13,8 @@
 #define STK_MAX_CLIENTS        30
 
 #define STK_MAX_PACKET_SIZE    65535
-#define STK_NICKNAME_SIZE      32
-#define STK_PASS_SIZE          32
-#define STK_CITY_SIZE          16
-#define STK_LOGIN_REVERSE_SIZE 64
-
-#define STK_DATA_ZERO_LENGTH   0
 
 #define STK_DEFAULT_SIZE       64
-
-#define STK_ID_LENGTH          4
-#define STK_PHONE_LENGTH       4
-#define STK_GENDER_LENGTH      1
-
-#define STK_ID_NUM_LENGTH      2
-
-#define STK_USER_FILE          "users"
 
 #define STK_CLIENT_OFFLINE     0
 #define STK_CLIENT_ONLINE      1
@@ -37,9 +23,12 @@
 #define STK_GENDER_BOY         1
 #define STK_GENDER_GIRL        2
 
-#define STK_ERR_TID -1
+#define STK_ERR_TID           -1
 
-#define STK_NULL_POINTER       -1
+#define STK_NULL_POINTER      -1
+
+#define STK_USER_FILE          "users"
+#define STK_GROUP_FILE         "groups"
 
 #if defined(WIN32)
 #define socket_t  SOCKET
@@ -48,11 +37,11 @@
 #endif
 
 /* notice, msg include stkp head!! */
-struct chat_message{
+typedef struct _chat_message{
     int  msg_len;
     char *msg;
-    struct chat_message *next;
-};
+    struct _chat_message *next;
+}chat_message;
 
 typedef struct{
     unsigned int   uid;
@@ -60,6 +49,11 @@ typedef struct{
     char           *data;
     int            len;
 }stk_data;
+
+typedef struct _client_group{
+    unsigned int groupid;
+    struct _client_group *next;
+}client_group;
 
 typedef struct{
     struct list_head list;
@@ -70,13 +64,30 @@ typedef struct{
     unsigned int  stkc_phone;
     unsigned char stkc_gender;
     unsigned int  stkc_token;
+    int           stkc_groupnum;
+    client_group  *stkc_group;
     socket_t      stkc_fd;
     int           stkc_state;
     GThread       *stkc_tid;
     stk_data      *stkc_data;
     int           msg_num;
-    struct chat_message *chatmsg;
+    chat_message  *chatmsg;
 }stk_client;
+
+typedef struct _group_member{
+    unsigned int uid;
+    struct _group_member *next;
+}group_member;
+
+typedef struct{
+    struct list_head list;
+    unsigned int  groupid;
+    unsigned char groupname[STK_GROUP_NAME_SIZE];
+    int           member_num;
+    group_member  *members;
+    int           msg_num;
+    chat_message  *chatmsg;
+}stk_group;
 
 #endif /* _STKSERVER_H_ */
 

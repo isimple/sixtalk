@@ -36,7 +36,7 @@ void stk_usage()
 int stk_chat_buddy(int fd, client_config *client)
 {
     stk_buddy *buddy = NULL;
-    unsigned short buddy_num;
+    int buddy_num;
     char buf[STK_MAX_PACKET_SIZE] = {0};
     char line[STK_STDIN_SIZE] = {0};
     unsigned int uid;
@@ -46,7 +46,7 @@ input:
     buddy_num = stk_get_buddynum();
     printf("====================================================\n");
     while (buddy_num--) {
-        buddy = stk_get_next(buddy);
+        buddy = stk_next_buddy(buddy);
         printf("%d(%s)\t", buddy->uid, buddy->nickname);
     }
     printf("\n====================================================\n");

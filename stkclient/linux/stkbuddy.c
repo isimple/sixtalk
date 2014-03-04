@@ -83,10 +83,10 @@ int stk_update_buddy(stk_buddy *buddy)
     return 0;
 }
 
-unsigned short stk_get_buddynum()
+int stk_get_buddynum()
 {
     struct list_head *entry;
-    unsigned short num = 0;
+    int num = 0;
 
     if (!list_empty(&stk_buddys)) {
         list_for_each(entry, &stk_buddys) {
@@ -97,7 +97,7 @@ unsigned short stk_get_buddynum()
     return num;
 }
 
-stk_buddy *stk_get_next(stk_buddy *buddy)
+stk_buddy *stk_next_buddy(stk_buddy *buddy)
 {
     struct list_head *next_list;
     stk_buddy *next_buddy;
@@ -136,14 +136,14 @@ int stk_print_buddy(stk_buddy *buddy)
 void stk_print_buddylist()
 {
     stk_buddy *buddy = NULL;
-    unsigned short buddy_num = stk_get_buddynum();
+    int buddy_num = stk_get_buddynum();
 
     printf("====================================================\n");
     printf("=============== Buddy List information  ============\n");
     printf("====================================================\n");
 
     while (buddy_num--) {
-        buddy = stk_get_next(buddy);
+        buddy = stk_next_buddy(buddy);
 
         printf("Uid:\t\t%d\n", buddy->uid);
         printf("Nickname:\t%s\n", buddy->nickname);

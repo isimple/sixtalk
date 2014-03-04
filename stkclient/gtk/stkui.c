@@ -186,7 +186,7 @@ GtkStatusIcon *stk_tray_create(GtkWidget *window)
     return tray_icon;
 }  
 
-static void stk_tree_setup(GtkWidget *tree)
+static void stk_buddytree_setup(GtkWidget *tree)
 {
     GtkCellRenderer *renderer;
     GtkTreeViewColumn *column;
@@ -196,15 +196,19 @@ static void stk_tree_setup(GtkWidget *tree)
      * append the column to the tree view.
      */
     renderer = gtk_cell_renderer_pixbuf_new();
-    column = gtk_tree_view_column_new_with_attributes("Pic",renderer, "pixbuf", STK_PIXBUF_COL, NULL);
+    column = gtk_tree_view_column_new_with_attributes("Pic",renderer, "pixbuf", STK_BUDDY_PIXBUF_COL, NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW (tree), column);
 
     renderer = gtk_cell_renderer_text_new();
-    column = gtk_tree_view_column_new_with_attributes("Buddys", renderer, "text", STK_TEXT_COL, NULL);
+    column = gtk_tree_view_column_new_with_attributes("Uid", renderer, "text", STK_BUDDY_ID_COL, NULL);
+    gtk_tree_view_append_column(GTK_TREE_VIEW (tree), column);
+
+    renderer = gtk_cell_renderer_text_new();
+    column = gtk_tree_view_column_new_with_attributes("Uname", renderer, "text", STK_BUDDY_NAME_COL, NULL);
     gtk_tree_view_append_column(GTK_TREE_VIEW (tree), column);
 }
 
-static void stk_tree_fill(GtkWidget *tree, const char *str)
+static void stk_buddytree_fill(GtkWidget *tree, const char *idstr, const char *namestr)
 {
     GtkListStore *store;
     GtkTreeIter iter;
@@ -214,7 +218,8 @@ static void stk_tree_fill(GtkWidget *tree, const char *str)
     pixbuf = gdk_pixbuf_new_from_file(STK_BUDDY_PNG, NULL);
 
     gtk_list_store_append(store, &iter);
-    gtk_list_store_set(store, &iter, STK_PIXBUF_COL, pixbuf, STK_TEXT_COL, str, -1);
+    gtk_list_store_set(store, &iter, STK_BUDDY_PIXBUF_COL, pixbuf, 
+                        STK_BUDDY_ID_COL, idstr, STK_BUDDY_NAME_COL, namestr,  -1);
     gdk_pixbuf_unref(pixbuf);
 }
 
@@ -226,25 +231,6 @@ static void stk_buddy_show(GtkWidget *widget, gpointer data)
     stk_get_buddyinfo(buddy, buf);
 
     stk_message("User", buf);
-}
-
-gboolean stk_check_socket(StkWidget *widgets)
-{
-    int running;
-
-    running = stk_get_running();
-
-    if (running == STK_SOCKET_ERR) {
-        /* socket err, maybe network is down */
-        stk_window_exit(NULL, widgets->tray);
-        return FALSE;
-    } else if (running == STK_SERVER_EXIT) {
-        /* server exit... */
-        stk_window_exit(NULL, widgets->tray);
-        return FALSE;
-    } else {
-        return TRUE;
-    }
 }
 
 static gboolean stk_buddy_lclick(GtkWidget *widget, GdkEventButton *event)
@@ -260,9 +246,8 @@ static gboolean stk_buddy_lclick(GtkWidget *widget, GdkEventButton *event)
     selection = gtk_tree_view_get_selection(tree);
     if (!gtk_tree_selection_get_selected(selection, &model, &iter)) 
         return FALSE;
-    gtk_tree_model_get(model, &iter, STK_TEXT_COL, &uid, -1);
+    gtk_tree_model_get(model, &iter, STK_BUDDY_ID_COL, &uid, -1);
 
-    uid[3] = '\0';
     buddy = stk_find_buddy(atoi(uid));
 
     /* this can not be happen!! */
@@ -300,16 +285,146 @@ static void stk_buddy_rclick (stk_buddy *buddy)
     gtk_widget_show_all(buddy->menu);
 }
 
+
+static void stk_grouptree_setup(GtkWidget *tree)
+{
+    GtkCellRenderer *renderer;
+    GtkTreeViewColumn *column;
+
+    /*
+     * Create a new GtkCellRendererText, add it to the tree view column and
+     * append the column to the tree view.
+     */
+    renderer = gtk_cell_renderer_pixbuf_new();
+    column = gtk_tree_view_column_new_with_attributes("Pic",renderer, "pixbuf", STK_GROUP_PIXBUF_COL, NULL);
+    gtk_tree_view_append_column(GTK_TREE_VIEW (tree), column);
+
+    renderer = gtk_cell_renderer_text_new();
+    column = gtk_tree_view_column_new_with_attributes("Gid", renderer, "text", STK_GROUP_ID_COL, NULL);
+    gtk_tree_view_append_column(GTK_TREE_VIEW (tree), column);
+
+    renderer = gtk_cell_renderer_text_new();
+    column = gtk_tree_view_column_new_with_attributes("Gname", renderer, "text", STK_GROUP_NAME_COL, NULL);
+    gtk_tree_view_append_column(GTK_TREE_VIEW (tree), column);
+}
+
+static void stk_grouptree_fill(GtkWidget *tree, const char *idstr, const char *namestr)
+{
+    GtkListStore *store;
+    GtkTreeIter iter;
+    GdkPixbuf *pixbuf;
+
+    store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(tree)));
+    pixbuf = gdk_pixbuf_new_from_file(STK_GROUP_PNG, NULL);
+
+    gtk_list_store_append(store, &iter);
+    gtk_list_store_set(store, &iter, STK_GROUP_PIXBUF_COL, pixbuf, 
+                        STK_GROUP_ID_COL, idstr, STK_GROUP_NAME_COL, namestr,  -1);
+    gdk_pixbuf_unref(pixbuf);
+}
+
+static void stk_group_show(GtkWidget *widget, gpointer data)
+{
+    stk_group *group = (stk_group *)data;
+    char buf[STK_MAX_SIZE] = {0};
+
+    stk_get_groupinfo(group, buf);
+
+    stk_message("Group", buf);
+}
+
+static gboolean stk_group_lclick(GtkWidget *widget, GdkEventButton *event)
+{
+    GtkTreeView *tree = GTK_TREE_VIEW(widget); 
+    GtkTreeSelection *selection;
+    GtkTreeModel *model;
+    GtkTreeIter iter;
+    stk_group *group = NULL;
+    char *gidstr;
+    unsigned int gid;
+    unsigned short num;
+
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(tree)); 
+    selection = gtk_tree_view_get_selection(tree);
+    if (!gtk_tree_selection_get_selected(selection, &model, &iter)) 
+        return FALSE;
+    gtk_tree_model_get(model, &iter, STK_GROUP_ID_COL, &gidstr, -1);
+
+    gid = atoi(gidstr);
+    num = client.group_num;
+    group = client.group;
+    while (num-- && group != NULL) {
+        if (group->groupid == gid) 
+            break;
+        group = group->next;
+    }
+
+    /* this can not be happen!! */
+    if (num == 0 && group == NULL) {
+        stk_message("STK Error", "Bad Group");
+        return FALSE;
+    }
+
+    if(event->type == GDK_BUTTON_PRESS && event->button == 0x3) {
+        gtk_menu_popup(GTK_MENU(group->menu), NULL, NULL,NULL, NULL, event->button, event->time);
+        return TRUE;
+    } else if (event->type == GDK_2BUTTON_PRESS && event->button == 0x1) {
+        stk_chatwin_show(NULL, (gpointer)group);
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
+static void stk_group_rclick (stk_group *group)
+{
+    GtkWidget *group_info, *gchat, *separator;
+
+    group_info = gtk_menu_item_new_with_label("Show Group Info");
+    gchat = gtk_menu_item_new_with_label("Chat In Group");
+    separator = gtk_separator_menu_item_new();
+
+    g_signal_connect(G_OBJECT(group_info), "activate", G_CALLBACK(stk_group_show), (gpointer)group);
+    g_signal_connect(G_OBJECT(gchat), "activate", G_CALLBACK(stk_chatwin_show), (gpointer)group);
+
+    gtk_menu_shell_append(GTK_MENU_SHELL(group->menu), group_info);
+    gtk_menu_shell_append(GTK_MENU_SHELL(group->menu), separator);
+    gtk_menu_shell_append(GTK_MENU_SHELL(group->menu), gchat);
+
+    gtk_widget_show_all(group->menu);
+}
+
+gboolean stk_check_socket(StkWidget *widgets)
+{
+    int running;
+
+    running = stk_get_running();
+
+    if (running == STK_SOCKET_ERR) {
+        /* socket err, maybe network is down */
+        stk_window_exit(NULL, widgets->tray);
+        return FALSE;
+    } else if (running == STK_SERVER_EXIT) {
+        /* server exit... */
+        stk_window_exit(NULL, widgets->tray);
+        return FALSE;
+    } else {
+        return TRUE;
+    }
+}
+
 void stk_buddywin_create(StkWidget *widgets)
 {
     char buf[STK_DEFAULT_SIZE] = {0};
     stk_buddy *buddy = NULL;
-    unsigned short buddy_num = stk_get_buddynum();
+    stk_group *group;
+    int num;
+    GtkWidget *notebook;
+    GtkWidget *label;
+    GtkWidget *sw_buddy, *sw_group;
     GtkWidget *vbox;
     GtkWidget *hbox1, *hbox2, *hbox3;
-    GtkWidget *label;
     GtkWidget *image;
-    GtkWidget *frame;
     GtkWidget *tree;
     GtkListStore *store;
     GtkTreeSelection *select_item;
@@ -325,6 +440,9 @@ void stk_buddywin_create(StkWidget *widgets)
     hbox1 = gtk_hbox_new(FALSE, 0);
     hbox2 = gtk_hbox_new(FALSE, 0);
     hbox3 = gtk_hbox_new(FALSE, 0);
+
+    notebook = gtk_notebook_new();
+    gtk_container_set_border_width(GTK_CONTAINER (notebook), 6);
 
 #if !GTK_CHECK_VERSION(2,12,0)
     tooltips = gtk_tooltips_new();
@@ -371,31 +489,14 @@ void stk_buddywin_create(StkWidget *widgets)
 #endif
     /* init my infomation widgets and add to hbox2 */
     label = gtk_label_new(buf);
-    image = gtk_image_new_from_file(STK_AVATAR_PNG);
+    if (client.gender == STK_GENDER_BOY) {
+        image = gtk_image_new_from_file(STK_AVATAR_PNG);
+    } else {
+        image = gtk_image_new_from_file(STK_AVATAR_GIRL_PNG);
+    }
     gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
     gtk_box_pack_start(GTK_BOX(hbox2), image, FALSE, FALSE, 15);
     gtk_box_pack_start(GTK_BOX(hbox2), label, FALSE, FALSE, 10);
-
-    /*  init buddy list frame */
-    frame = gtk_frame_new("Buddy List");
-    gtk_container_set_border_width(GTK_CONTAINER(frame), 5);
-
-    store = gtk_list_store_new(STK_COL_NUM, GDK_TYPE_PIXBUF, G_TYPE_STRING);
-    tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
-    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
-
-    select_item = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
-    gtk_tree_selection_set_mode(select_item, GTK_SELECTION_SINGLE);
-    gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
-    //gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(tree), TRUE);
-    //gtk_tree_view_set_reorderable(GTK_TREE_VIEW(tree), TRUE);
-    gtk_tree_view_set_hover_selection(GTK_TREE_VIEW(tree), TRUE);
-    gtk_tree_view_set_hover_expand(GTK_TREE_VIEW(tree), TRUE);
-
-    stk_tree_setup(tree);
-    gtk_widget_add_events(tree, GDK_BUTTON_PRESS_MASK);
-    g_signal_connect(G_OBJECT(tree), "button-press-event", G_CALLBACK(stk_buddy_lclick), NULL);
-    gtk_container_add(GTK_CONTAINER(frame), tree);
 
     /* init tools, chat voice video  */
     image = gtk_image_new_from_file(STK_CHAT_PNG);
@@ -435,20 +536,83 @@ void stk_buddywin_create(StkWidget *widgets)
     gtk_box_pack_start(GTK_BOX(vbox), hbox1, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(vbox), hbox2, FALSE, FALSE, 30);
     gtk_box_pack_end(GTK_BOX(vbox), hbox3, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), notebook, TRUE, TRUE, 0);
 
     gtk_container_add(GTK_CONTAINER(widgets->mainw), vbox);
 
-    while (buddy_num--) {
-        buddy = stk_get_next(buddy);
-        memset(buf, 0, sizeof(buf));
-        sprintf(buf, "%d (%s)", buddy->uid, buddy->nickname);
-        stk_tree_fill(tree, buf);
+    /* buddy list treeview  */
+    sw_buddy = gtk_scrolled_window_new (NULL, NULL);
+    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw_buddy), GTK_SHADOW_ETCHED_IN);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw_buddy), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+
+    store = gtk_list_store_new(STK_BUDDY_COL_NUM, GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_STRING);
+    tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
+
+    select_item = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
+    gtk_tree_selection_set_mode(select_item, GTK_SELECTION_SINGLE);
+    gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_reorderable(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_hover_selection(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_hover_expand(GTK_TREE_VIEW(tree), TRUE);
+
+    stk_buddytree_setup(tree);
+    gtk_widget_add_events(tree, GDK_BUTTON_PRESS_MASK);
+    g_signal_connect(G_OBJECT(tree), "button-press-event", G_CALLBACK(stk_buddy_lclick), NULL);
+    gtk_container_add(GTK_CONTAINER (sw_buddy), tree);
+
+    num = stk_get_buddynum();
+    while (num--) {
+        char uid[STK_DEFAULT_SIZE] = {0};
+        char uname[STK_DEFAULT_SIZE] = {0};
+        buddy = stk_next_buddy(buddy);
+        sprintf(uid, "%u", buddy->uid);
+        sprintf(uname, "%s", buddy->nickname);
+        stk_buddytree_fill(tree, uid, uname);
         buddy->menu = gtk_menu_new();
         stk_buddy_rclick(buddy);
     }
+    widgets->buddytree= tree;
 
-    widgets->treev= tree;
+    /* group list treeview  */
+    sw_group = gtk_scrolled_window_new (NULL, NULL);
+    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw_group), GTK_SHADOW_ETCHED_IN);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw_group), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+
+    store = gtk_list_store_new(STK_GROUP_COL_NUM, GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_STRING);
+    tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+    gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(tree), FALSE);
+
+    select_item = gtk_tree_view_get_selection(GTK_TREE_VIEW(tree));
+    gtk_tree_selection_set_mode(select_item, GTK_SELECTION_SINGLE);
+    gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_reorderable(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_hover_selection(GTK_TREE_VIEW(tree), TRUE);
+    gtk_tree_view_set_hover_expand(GTK_TREE_VIEW(tree), TRUE);
+
+    stk_grouptree_setup(tree);
+    gtk_widget_add_events(tree, GDK_BUTTON_PRESS_MASK);
+    g_signal_connect(G_OBJECT(tree), "button-press-event", G_CALLBACK(stk_group_lclick), NULL);
+    gtk_container_add(GTK_CONTAINER (sw_group), tree);
+
+    num = client.group_num;
+    group = client.group;
+    while (num-- && group != NULL) {
+        char gid[STK_DEFAULT_SIZE] = {0};
+        char gname[STK_DEFAULT_SIZE] = "DefaultGroupName";
+        sprintf(gid, "%u", group->groupid);
+        strcpy(gname, group->groupname);
+        stk_grouptree_fill(tree, gid, gname);
+        group->menu = gtk_menu_new();
+        stk_group_rclick(group);
+        group = group->next;
+    }
+
+    widgets->grouptree= tree;
+
+    /* add buddy and group to notebook */
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), sw_buddy, gtk_label_new ("User List"));
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), sw_group, gtk_label_new ("Group List"));
 
     g_timeout_add(2000, (GSourceFunc)stk_check_socket, (gpointer)widgets); /* every 2s */
 

@@ -6,8 +6,8 @@
 #
 
 CC      = gcc
-OBJ     = stkserver.o stkpacket.o stkuser.o cJSON.o
-LINKOBJ = stkserver.o stkpacket.o stkuser.o cJSON.o
+OBJ     = stkserver.o stkpacket.o stkuser.o stkgroup.o cJSON.o
+LINKOBJ = stkserver.o stkpacket.o stkuser.o stkgroup.o cJSON.o
 LIBS    = -lm -lpthread
 CFLAGS  = 
 BIN     = stkserver
@@ -32,6 +32,9 @@ stkpacket.o: stkpacket.c
 
 stkuser.o: stkuser.c
 	$(CC) -c stkuser.c -o stkuser.o $(CFLAGS)
+
+stkgroup.o: stkgroup.c
+	$(CC) -c stkgroup.c -o stkgroup.o $(CFLAGS)
 
 cJSON.o: cJSON.c
 	$(CC) -c cJSON.c -o cJSON.o $(CFLAGS)

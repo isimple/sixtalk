@@ -40,8 +40,8 @@ int stk_init_buddy(void);
 stk_buddy *stk_find_buddy(unsigned int uid);
 int stk_add_buddy(stk_buddy *buddy);
 int stk_update_buddy(stk_buddy *buddy);
-unsigned short stk_get_buddynum(void);
-stk_buddy *stk_get_next(stk_buddy *buddy);
+int stk_get_buddynum(void);
+stk_buddy *stk_next_buddy(stk_buddy *buddy);
 int stk_print_buddy(stk_buddy *buddy);
 void stk_print_buddylist(void);
 

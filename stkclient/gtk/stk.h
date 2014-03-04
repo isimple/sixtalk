@@ -63,8 +63,10 @@ int stk_init_socket(void);
 void stk_clean_socket(socket_t fd);
 int stk_connect(client_config *config);
 int stk_login(socket_t fd, char *buf, int max_len, unsigned int uid, char *password);
-int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy);
-int stk_send_getbuddylist(socket_t fd, char *buf, int max_len, unsigned int uid);
+int stk_send_getbuddyinfo(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy);
+int stk_send_getbuddy(socket_t fd, char *buf, int max_len, unsigned int uid);
+int stk_send_getgroupinfo(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int gid, stk_group *group);
+int stk_send_getgroup(socket_t fd, char *buf, int max_len, unsigned int uid, client_config *client);
 int stk_send_msg(socket_t fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int n_uid);
 int stk_recv_msg(client_config *client);
 
@@ -77,8 +79,8 @@ int stk_recv_msg(client_config *client);
 stk_buddy *stk_find_buddy(unsigned int uid);
 int stk_add_buddy(stk_buddy *buddy);
 int stk_update_buddy(stk_buddy *buddy);
-unsigned short stk_get_buddynum(void);
-stk_buddy *stk_get_next(stk_buddy *buddy);
+int stk_get_buddynum(void);
+stk_buddy *stk_next_buddy(stk_buddy *buddy);
 
 
 

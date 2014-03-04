@@ -56,11 +56,11 @@ int stk_init_socket()
 void stk_clean_socket()
 {
     stk_client *client = NULL;
-    unsigned short num;
+    int num = 0;
 
     num = stk_get_usernum();
     while (num--) {
-        client = stk_get_next(client);
+        client = stk_next_user(client);
         if(client->stkc_state == STK_CLIENT_ONLINE) {
             shutdown(client->stkc_fd, STK_SOCKET_BOTH);
             close(client->stkc_fd);
@@ -158,6 +158,7 @@ gboolean stk_deliver_msg(stk_client *client)
     }
 
     while (client->msg_num > 0) {
+        memset(msg, 0, sizeof(msg));
         if (stk_get_msg(client, msg, &len) == -1)
             break;
         head = (stkp_head *)msg;
@@ -225,7 +226,7 @@ int stk_login_ack(socket_t fd, unsigned int uid, char *buf)
             client->stkc_state = STK_CLIENT_ONLINE;
             stk_print_user(client);
             /* ask gui to update */
-            g_idle_add((GSourceFunc)stk_tree_update, (gpointer)client);
+            g_idle_add((GSourceFunc)stk_buddytree_update, (gpointer)client);
         } else {
             *tmp = STK_LOGIN_INVALID_PASS;
         }
@@ -252,7 +253,7 @@ int stk_getuser_ack(stk_client *client, char *buf)
     stk_client *client_next;
     char *tmp = NULL;
     unsigned short num = stk_get_usernum();
-    unsigned int uid, uid_n;
+    unsigned int uid;
     int len;
     int ret;
 
@@ -268,7 +269,7 @@ int stk_getuser_ack(stk_client *client, char *buf)
     num = stk_get_usernum()-1;
     client_next = client;
     while (num--) {
-        client_next = stk_get_next(client_next);
+        client_next = stk_next_user(client_next);
         uid = client_next->stkc_uid;
         uid = htonl(uid);
         memcpy(tmp, &uid, STK_ID_LENGTH);
@@ -295,7 +296,7 @@ int stk_getonlineuser_ack(stk_client *client, char *buf)
 
 }
 
-int stk_getinfo_ack(stk_client *client, char *buf)
+int stk_getuserinfo_ack(stk_client *client, char *buf)
 {
     stkp_head *head = (stkp_head *)buf;
     stk_client *user;
@@ -338,19 +339,115 @@ int stk_getinfo_ack(stk_client *client, char *buf)
     len++;
 
     if (len != send(client->stkc_fd, buf, len, 0)) {
-        printf("stk_getinfo_ack: send get user profile error\n");
+        printf("stk_getuserinfo_ack: send get user profile error\n");
+        return -1;
+    }
+}
+
+
+int stk_getgroup_ack(stk_client *client, char *buf)
+{
+    stkp_head *head = (stkp_head *)buf;
+    client_group *group;
+    char *tmp = NULL;
+    unsigned short num = client->stkc_groupnum;
+    unsigned int gid;
+    int len;
+    int ret;
+
+    head->stkp_flag = 0x1;
+    head->stkp_token = htonl(client->stkc_token);
+
+    tmp = buf+sizeof(stkp_head);
+    num = htons(num);
+    memcpy(tmp, &num, STK_GID_NUM_LENGTH);
+    tmp += STK_GID_NUM_LENGTH;
+
+    num = client->stkc_groupnum;
+    group = client->stkc_group;
+    while (num-- && group != NULL) {
+        gid = group->groupid;
+        gid = htonl(gid);
+        memcpy(tmp, &gid, STK_GID_LENGTH);
+        tmp += STK_GID_LENGTH;
+        group = group->next;
+    }
+
+    num = client->stkc_groupnum;
+    tmp = buf+sizeof(stkp_head);
+    len = htons(STK_GID_NUM_LENGTH + num*STK_GID_LENGTH);
+    memcpy(tmp-2, &len, 2);
+
+    len = STK_GID_NUM_LENGTH + num*STK_GID_LENGTH + sizeof(stkp_head);
+    buf[len] = STKP_PACKET_TAIL;
+    len++;
+
+    if (len != send(client->stkc_fd, buf, len, 0)) {
+        printf("stk_getuser_ack: send get user error\n");
+        return -1;
+    }
+}
+
+int stk_getgroupinfo_ack(stk_client *client, char *buf)
+{
+    stkp_head *head = (stkp_head *)buf;
+    stk_group *group;
+    group_member *member;
+    char *tmp = NULL;
+    unsigned int gid, uid;
+    unsigned short num;
+    int len;
+    int ret;
+
+    head->stkp_flag = 0x1;
+    head->stkp_token = htonl(client->stkc_token);
+
+    tmp = buf + sizeof(stkp_head);
+
+    memcpy(&gid, tmp, STK_GID_LENGTH);
+    gid = ntohl(gid);
+    group = stk_find_group(gid);
+    if (group == NULL) {
+        memset(tmp, 0, STK_GID_LENGTH);
+    } else {
+        tmp += STK_GID_LENGTH;
+        memcpy(tmp, group->groupname, STK_GROUP_NAME_SIZE);
+
+        tmp += STK_GROUP_NAME_SIZE;
+        num = htons(group->member_num);
+        memcpy(tmp, &num, STK_GID_NUM_LENGTH);
+
+        tmp += STK_GID_NUM_LENGTH;
+        num = group->member_num;
+        member = group->members;
+        while (num-- && member != NULL) {
+            uid = htonl(member->uid);
+            memcpy(tmp, &uid, STK_ID_LENGTH);
+            tmp += STK_ID_LENGTH;
+            member = member->next;
+        }
+    }
+
+    num = group->member_num;
+    tmp = buf + sizeof(stkp_head);
+    len = htons(STK_GID_LENGTH+STK_GROUP_NAME_SIZE+STK_GID_NUM_LENGTH+num*STK_ID_LENGTH);
+    memcpy(tmp-2, &len, 2);
+
+    len = STK_GID_LENGTH+STK_GROUP_NAME_SIZE+STK_GID_NUM_LENGTH+num*STK_ID_LENGTH+sizeof(stkp_head);
+    buf[len] = STKP_PACKET_TAIL;
+    len++;
+
+    if (len != send(client->stkc_fd, buf, len, 0)) {
+        printf("stk_getuserinfo_ack: send get user profile error\n");
         return -1;
     }
 }
 
 int stk_sendmsg_ack(stk_client *client, char *buf, int bytes)
 {
-    stkp_head *head = (stkp_head *)buf;
     stk_client *user;
     char *tmp = NULL;
-    char *data = NULL;
     unsigned int uid;
-    unsigned short len;
     int ret;
 
     tmp = buf + sizeof(stkp_head);
@@ -366,7 +463,37 @@ int stk_sendmsg_ack(stk_client *client, char *buf, int bytes)
         return 0;
     } else if (user->stkc_state == STK_CLIENT_ONLINE){
         if (!stk_add_msg(user, buf, bytes)) {
-            g_idle_add((GSourceFunc)stk_deliver_msg, (gpointer)user);;
+            g_idle_add((GSourceFunc)stk_deliver_msg, (gpointer)user);
+        }
+        return 0;
+    }
+}
+
+int stk_sendgmsg_ack(stk_client *client, char *buf, int bytes)
+{
+    stk_group *group;
+    group_member *member;
+    stk_client *user;
+    char *tmp = NULL;
+    unsigned int gid;
+    int ret;
+
+    tmp = buf + sizeof(stkp_head);
+
+    memcpy(&gid, tmp, STK_GID_LENGTH);
+    gid = ntohl(gid);
+    group = stk_find_group(gid);
+    if (group == NULL) {
+        /* msg to a unknow group, I beleive it's not impossible */
+        return 0;
+    } else {
+        member = group->members;
+        while (member != NULL) {
+            user = stk_find_user(member->uid);
+            if (!stk_add_msg(user, buf, bytes)) {
+                g_idle_add((GSourceFunc)stk_deliver_msg, (gpointer)user);
+            }
+            member = member->next;
         }
         return 0;
     }
@@ -396,7 +523,7 @@ void stk_socket_thread(void *arg)
             printf("stk_socket_thread: peer socket has been shutdown.\n");
             if (client != NULL) {
                 stk_user_offline(client);
-                g_idle_add((GSourceFunc)stk_tree_update, (gpointer)client);
+                g_idle_add((GSourceFunc)stk_buddytree_update, (gpointer)client);
             }
             break;
         } 
@@ -431,11 +558,20 @@ void stk_socket_thread(void *arg)
         case STKP_CMD_GET_ONLINE_USER:
             stk_getonlineuser_ack(client, buf);
             break;
-        case STKP_CMD_GET_INFO:
-            stk_getinfo_ack(client, buf);
+        case STKP_CMD_GET_USER_INFO:
+            stk_getuserinfo_ack(client, buf);
+            break;
+        case STKP_CMD_GET_GROUP:
+            stk_getgroup_ack(client, buf);
+            break;
+        case STKP_CMD_GET_GROUP_INFO:
+            stk_getgroupinfo_ack(client, buf);
             break;
         case STKP_CMD_SEND_MSG:
             stk_sendmsg_ack(client, buf, bytes);
+            break;
+        case STKP_CMD_SEND_GMSG:
+            stk_sendgmsg_ack(client, buf, bytes);
             break;
         default:
             printf("Unknow STKP CMD, Drop it.");

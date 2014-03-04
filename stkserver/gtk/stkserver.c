@@ -53,6 +53,8 @@ void stk_main()
     GtkWidget *window;
     int ret;
 
+    /* group must be init before user. */
+    stk_init_group();
     stk_init_user();
 
     window = stk_window_create();
@@ -92,7 +94,9 @@ int main (int argc,char *argv[])
 #if defined(WIN32)
     stk_clean_socket();
 #endif
+
     stk_clear_user();
+    stk_clear_group();
 
     return 0;
 }

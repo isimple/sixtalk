@@ -83,10 +83,10 @@ int stk_update_buddy(stk_buddy *buddy)
     return 0;
 }
 
-unsigned short stk_get_buddynum()
+int stk_get_buddynum()
 {
     struct list_head *entry;
-    unsigned short num = 0;
+    int num = 0;
 
     if (!list_empty(&stk_buddys)) {
         list_for_each(entry, &stk_buddys) {
@@ -97,7 +97,7 @@ unsigned short stk_get_buddynum()
     return num;
 }
 
-stk_buddy *stk_get_next(stk_buddy *buddy)
+stk_buddy *stk_next_buddy(stk_buddy *buddy)
 {
     struct list_head *next_list;
     stk_buddy *next_buddy;
@@ -135,6 +135,40 @@ void stk_get_buddyinfo(stk_buddy *buddy, char *buf)
     strcat(buf, tmp);
 
     return;
+}
+
+int stk_clear_buddy(client_config *config)
+{
+    stk_buddy *buddy, *next_buddy;
+    stk_group *group, *next_group;
+    group_member *member, *next_member;
+    int num, num2;
+
+    /* free buddy */
+    num = stk_get_buddynum();
+    buddy = stk_next_buddy(NULL);
+    while(buddy != NULL && num--){
+        next_buddy = stk_next_buddy(buddy);
+        free(buddy);
+        buddy = next_buddy;
+    }
+
+    /* free client */
+    num = config->group_num;
+    group = config->group;
+    while(group != NULL && num--){
+        num2 = group->member_num;
+        member = group->members;
+        while (member != NULL && num2--) {
+            next_member = member->next;
+            free(member);
+            member = next_member;
+        }
+
+        next_group = group->next;
+        free(group);
+        group = next_group;
+    }
 }
 
 #if 0
@@ -179,6 +213,38 @@ void stk_print_buddylist()
     fflush(stdout);
 }
 #endif
+
+void stk_get_groupinfo(stk_group *group, char *buf)
+{
+    group_member *member;
+    char tmp[STK_DEFAULT_SIZE] = {0};
+    char tmp2[STK_DEFAULT_SIZE] = {0};
+    unsigned short num;
+
+    if (group == NULL || buf == NULL){
+        return;
+    }
+
+    sprintf(tmp, "GroupID:\t\t%d\n", group->groupid);
+    strcat(buf, tmp);
+
+    memset(tmp, 0, sizeof(tmp));
+    sprintf(tmp, "GroupName:\t%s\n", group->groupname);
+    strcat(buf, tmp);
+
+    memset(tmp, 0, sizeof(tmp));
+    sprintf(tmp, "Members:\t");
+    num = group->member_num;
+    member = group->members;
+    while (num-- && member != NULL) {
+        sprintf(tmp2, "%u ", member->uid);
+        strcat(tmp, tmp2);
+        member = member->next;
+    }
+    strcat(buf, tmp);
+
+    return;
+}
 
 int stk_init_msg(struct chat_message *chatmsg)
 {
