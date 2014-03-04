@@ -1,5 +1,5 @@
 /* 
- * File: list.h
+ * File: stklist.h
  * Modified version from linux kernel
  * 
  *  Copyright (C) 2014 SixTeam
@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef _LIST_H_
-#define _LIST_H_
+#ifndef _STKLIST_H_
+#define _STKLIST_H_
 
 /*
  * Simple doubly linked list implementation.
@@ -24,7 +24,8 @@ struct list_head {
 #define LIST_HEAD(name) \
     struct list_head name = LIST_HEAD_INIT(name)
 
-#define offsetof(TYPE, MEMBER) ((unsigned int) &((TYPE *)0)->MEMBER)
+/* stk_offsetof is offsetof in linux kernel, but conflict with glib, so change name */
+#define stk_offsetof(TYPE, MEMBER) ((unsigned int) &((TYPE *)0)->MEMBER)
 
 /**
  * container_of - cast a member of a structure out to the containing structure
@@ -35,7 +36,7 @@ struct list_head {
  */
 #define container_of(ptr, type, member) ({                  \
     const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-    (type *)( (char *)__mptr - offsetof(type,member) );})
+    (type *)( (char *)__mptr - stk_offsetof(type,member) );})
 
 /**
  * list_entry - get the struct for this entry
@@ -125,4 +126,4 @@ static inline void list_del(struct list_head *entry)
     entry->prev = NULL;
 }
 
-#endif /* _LIST_H */
+#endif /* _STKLIST_H */

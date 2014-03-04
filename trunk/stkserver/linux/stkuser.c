@@ -20,6 +20,44 @@
 
 LIST_HEAD(stk_users);
 
+static int stk_init_mygroup(stk_client *client)
+{
+    stk_group *group;
+    group_member *gtmp;
+    client_group *ctmp, *ctmp2;
+    int gnum = stk_get_groupnum();
+    int cgnum = 0;
+
+    group = NULL;
+    while(gnum--) {
+        group = stk_next_group(group);
+        gtmp = group->members;
+        while (gtmp != NULL) {
+            if (gtmp->uid == client->stkc_uid) {
+                ctmp2 = (client_group *)malloc(sizeof(client_group));
+                if (ctmp2 == NULL) {
+                    printf("what the fuck!\n");
+                    break;
+                }
+                ctmp2->groupid = group->groupid;
+                ctmp2->next = NULL;
+                if (cgnum == 0) {
+                    client->stkc_group = ctmp2;
+                    ctmp = client->stkc_group;
+                } else {
+                    ctmp->next = ctmp2;
+                    ctmp = ctmp->next;
+                }
+                cgnum++;
+                break;
+            }
+            gtmp = gtmp->next;
+        }
+    }
+
+    return cgnum;
+}
+
 int stk_init_user()
 {
     FILE *fd;
@@ -77,7 +115,10 @@ int stk_init_user()
 #endif
             client->stkc_phone = cJSON_GetObjectItem(item,"phone")->valueint;
             client->stkc_gender = cJSON_GetObjectItem(item,"gender")->valueint;
-
+            client->stkc_groupnum = stk_init_mygroup(client);
+#ifdef STK_DEBUG
+            stk_print_user(client);
+#endif
             list_add_tail(&client->list, &stk_users);
         } else {
             printf("malloc error: %s(errno: %d)\n",strerror(errno),errno);
@@ -183,10 +224,10 @@ stk_client *stk_get_user_by_tid(pthread_t tid)
 }
 
 
-unsigned short stk_get_usernum()
+int stk_get_usernum()
 {
     struct list_head *entry;
-    unsigned short num = 0;
+    int num = 0;
 
     if (!list_empty(&stk_users)) {
         list_for_each(entry, &stk_users) {
@@ -197,7 +238,7 @@ unsigned short stk_get_usernum()
     return num;
 }
 
-stk_client *stk_get_next(stk_client *client)
+stk_client *stk_next_user(stk_client *client)
 {
     struct list_head *next_list;
     stk_client *next_client;
@@ -229,10 +270,19 @@ int stk_user_offline(stk_client *client)
 void stk_clear_user()
 {
     stk_client *client, *next_client;
+    int num = stk_get_usernum();
+    client_group *tmp, *tmp2;
 
-    client = stk_get_next(NULL);
-    while(client != NULL){
-        next_client = stk_get_next(client);
+    client = stk_next_user(NULL);
+    while(client != NULL && num--){
+        next_client = stk_next_user(client);
+        tmp = client->stkc_group;
+        free(client->stkc_data);
+        while(tmp != NULL) {
+            tmp2 = tmp->next;
+            free(tmp);
+            tmp = tmp2;
+        }
         free(client);
         client = next_client;
     }
@@ -241,12 +291,13 @@ void stk_clear_user()
 
 int stk_print_user(stk_client *client)
 {
+    client_group  *cgroup = client->stkc_group;
     if (client == NULL) {
         return STK_UNKNOWN_USER;
     }
 
     printf("====================================================\n");
-    printf("=============== STK Client information  ============\n");
+    printf("=============== stkclient information  =============\n");
     printf("====================================================\n");
     printf("Uid:\t\t%d\n", client->stkc_uid);
     printf("Nickname:\t%s\n", client->stkc_nickname);
@@ -254,7 +305,83 @@ int stk_print_user(stk_client *client)
     printf("City:\t\t%s\n", client->stkc_city);
     printf("Phone:\t\t%d\n", client->stkc_phone);
     printf("Gender\t\t%s\n", (client->stkc_gender == STK_GENDER_BOY)?"boy":"girl");
+    printf("My groups:\t");
+    while (cgroup != NULL) {
+        printf("%d\t", cgroup->groupid);
+        cgroup = cgroup->next;
+    }
+    printf("\n");  
     printf("====================================================\n");
 }
 
+int stk_init_msg(chat_message *chatmsg)
+{
+
+}
+
+int stk_add_msg(stk_client *client, char *data, int size)
+{
+    chat_message *chatmsg;
+    chat_message *tmp;
+
+    if (client == NULL || data == NULL)
+        return -1;
+
+    chatmsg = (chat_message *)malloc(sizeof(chat_message));
+    if (chatmsg == NULL) {
+        printf("Error while malloc for chatmsg\n");
+        return -1;
+    }
+
+    chatmsg->msg = (char *)malloc(size);
+    if (chatmsg->msg == NULL) {
+        printf("Error while malloc for chatmsg->msg\n");
+        free(chatmsg);
+        return -1;
+    }
+
+    chatmsg->msg_len = size;
+    memcpy(chatmsg->msg, data, size);
+    chatmsg->next = chatmsg;
+
+    if (client->chatmsg == NULL || client->msg_num == 0) {
+        client->chatmsg = chatmsg;
+    } else {
+        tmp = client->chatmsg;
+        while(tmp != tmp->next) {
+            tmp = tmp->next;
+        }
+        tmp->next = chatmsg;
+    }
+    client->msg_num++;
+
+    return 0;
+}
+
+int stk_get_msg(stk_client *client, char *data, int *size)
+{
+    chat_message *tmp;
+
+    if (data == NULL)
+        return -1;
+
+    tmp = client->chatmsg;
+    if(tmp == NULL) {
+        return -1;
+    }
+
+    *size = tmp->msg_len;
+    memcpy(data, tmp->msg, tmp->msg_len);
+    client->chatmsg = tmp->next;
+    client->msg_num--;
+
+    if (client->msg_num == 0) {
+        client->chatmsg == NULL;
+    }
+
+    free(tmp->msg);
+    free(tmp);
+
+    return 0;
+}
 

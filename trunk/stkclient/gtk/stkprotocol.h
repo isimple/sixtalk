@@ -18,15 +18,38 @@ enum {
     STKP_CMD_LOGOUT          = 0x0004,
     STKP_CMD_GET_USER        = 0x0005,
     STKP_CMD_GET_ONLINE_USER = 0x0006,
-    STKP_CMD_GET_INFO        = 0x0007,
-    STKP_CMD_SEND_MSG        = 0x0008,
-    STKP_CMD_REPLY_MSG       = 0x0009,
+    STKP_CMD_GET_USER_INFO   = 0x0007,
+    STKP_CMD_GET_GROUP       = 0x0008,
+    STKP_CMD_GET_GROUP_INFO  = 0x0009,
+    STKP_CMD_SEND_MSG        = 0x0010,
+    STKP_CMD_REPLY_MSG       = 0x0011,
+    STKP_CMD_SEND_GMSG       = 0x0012,
+    STKP_CMD_REPLY_GMSG      = 0x0013,
+    STKP_CMD_END             = 0x00FF
 };
 
 #define STKP_TEST_FLAG(x)      (x&0x1)
 
 #define STKP_MAGIC             0x5354
 #define STKP_VERSION           0x0001
+
+#define STK_LOGIN_REVERSE_SIZE 64
+#define STK_IPADDR_LENGTH      16
+#define STK_DATA_ZERO_LENGTH   0
+
+/* size about user */
+#define STK_ID_LENGTH          4
+#define STK_NICKNAME_SIZE      32
+#define STK_PASS_SIZE          32
+#define STK_CITY_SIZE          16
+#define STK_PHONE_LENGTH       4
+#define STK_GENDER_LENGTH      1
+#define STK_ID_NUM_LENGTH      2
+
+/* size about group */
+#define STK_GID_LENGTH         4
+#define STK_GID_NUM_LENGTH     2
+#define STK_GROUP_NAME_SIZE    32
 
 #define STK_LOGIN_ERR          -1
 #define STK_LOGIN_SUCCESS      0

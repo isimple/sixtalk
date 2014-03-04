@@ -21,7 +21,7 @@
         "pass": "109",
         "city": "Shenzhen",
         "phone": 109,
-        "gender":2 
+        "gender":1 
     },
    "Animy": {
         "uid": 110,
@@ -37,6 +37,14 @@
         "pass": "111",
         "city": "Xuzhou",
         "phone": 111,
+        "gender": 2
+    },
+   "Sharmer": {
+        "uid": 112,
+        "nickname": "Sharmer",
+        "pass": "112",
+        "city": "Chongqing",
+        "phone": 112,
         "gender": 2
     }
 }    

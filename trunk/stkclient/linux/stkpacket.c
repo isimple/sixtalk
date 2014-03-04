@@ -218,7 +218,7 @@ int stk_send_getbuddylist(int fd, char *buf, int max_len, unsigned int uid)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
-    unsigned short buddy_num;
+    int buddy_num;
     unsigned int buddy_uid;
     stk_buddy buddy;
     stk_buddy *next_buddy = NULL;
@@ -288,7 +288,7 @@ int stk_send_getbuddylist(int fd, char *buf, int max_len, unsigned int uid)
         next_buddy = NULL;
         buddy_num = stk_get_buddynum();
         while (buddy_num--) {
-            next_buddy = stk_get_next(next_buddy);
+            next_buddy = stk_next_buddy(next_buddy);
             memset(&buddy, 0, sizeof(stk_buddy));
             if (stk_send_getprofile(fd, buf, max_len, uid, next_buddy->uid, &buddy) != -1) {
                 stk_update_buddy(&buddy);

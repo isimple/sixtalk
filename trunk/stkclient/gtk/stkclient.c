@@ -69,7 +69,8 @@ connect:
                     stk_buddy buddy;
                     client->state = STK_CLIENT_ONLINE;
                     memset(&buddy, 0 ,sizeof(stk_buddy));
-                    ret = stk_send_getprofile(client->fd, sendbuf, STK_MAX_PACKET_SIZE, client->uid, client->uid, &buddy);
+
+                    ret = stk_send_getbuddyinfo(client->fd, sendbuf, STK_MAX_PACKET_SIZE, client->uid, client->uid, &buddy);
                     if (ret == -1){
                         printf("What to do now, there must be something wrong with socket!\n");
                         stk_set_running(STK_SOCKET_ERR);
@@ -81,12 +82,20 @@ connect:
                         client->gender = buddy.gender;
                     }
 
-                    ret = stk_send_getbuddylist(client->fd, sendbuf, STK_MAX_PACKET_SIZE, client->uid);
+                    ret = stk_send_getbuddy(client->fd, sendbuf, STK_MAX_PACKET_SIZE, client->uid);
                     if (ret == -1){
                         printf("What to do now, there must be something wrong with socket!\n");
                         stk_set_running(STK_SOCKET_ERR);
                         goto connect;
                     }
+
+                    ret = stk_send_getgroup(client->fd, sendbuf, STK_MAX_PACKET_SIZE, client->uid, client);
+                    if (ret == -1){
+                        printf("What to do now, there must be something wrong with socket!\n");
+                        stk_set_running(STK_SOCKET_ERR);
+                        goto connect;
+                    }
+
                     stk_set_running(STK_CONNECTED);
                     break;
                 } 
@@ -209,6 +218,7 @@ int main (int argc,char *argv[])
 #if defined(WIN32)
     stk_clean_socket(client.fd);
 #endif
+    stk_clear_buddy(&client);
 
     return 0;
 }

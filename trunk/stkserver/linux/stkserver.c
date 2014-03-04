@@ -28,7 +28,7 @@ void *stk_main(void *arg)
     memcpy(&fd, arg, sizeof(fd));
 
     data = (stk_data *)malloc(sizeof(stk_data));
-    signal(SIGUSR1, stk_handle_signal);
+    signal(SIGUSR1, stk_deliver_msg);
 
     while(1) {
         bytes = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
@@ -77,11 +77,20 @@ void *stk_main(void *arg)
         case STKP_CMD_GET_ONLINE_USER:
             stk_getonlineuser_ack(client, buf);
             break;
-        case STKP_CMD_GET_INFO:
-            stk_getinfo_ack(client, buf);
+        case STKP_CMD_GET_USER_INFO:
+            stk_getuserinfo_ack(client, buf);
+            break;
+        case STKP_CMD_GET_GROUP:
+            stk_getgroup_ack(client, buf);
+            break;
+        case STKP_CMD_GET_GROUP_INFO:
+            stk_getgroupinfo_ack(client, buf);
             break;
         case STKP_CMD_SEND_MSG:
             stk_sendmsg_ack(client, buf, bytes);
+            break;
+        case STKP_CMD_SEND_GMSG:
+            stk_sendgmsg_ack(client, buf, bytes);
             break;
         default:
             printf("Unknow STKP CMD, Drop it.");
@@ -99,6 +108,7 @@ int main(int argc, char argv[])
     pthread_t tid;
     int err;
 
+    stk_init_group();
     stk_init_user();
 
     if ((server_fd = stk_server_socket()) == -1){
@@ -125,6 +135,8 @@ int main(int argc, char argv[])
 
     //pthread_join();
     stk_clear_user();
+    stk_clear_group();
+
     close(server_fd);
 
     return 0;

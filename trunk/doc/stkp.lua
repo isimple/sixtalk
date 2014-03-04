@@ -2,7 +2,7 @@ do
 	local p_Stkp = Proto("Stkp","SixTalk Protocol")
 	local f_magic = ProtoField.string("Stkp.magic","Magic")
 	local f_version = ProtoField.uint16("Stkp.version","Version",base.HEX)
-	local f_cmd = ProtoField.uint16("Stkp.cmd","Command",base.HEX, { [1]="Request Login Token", [2]="Login", [3]="Keep Alive", [4]="Login Out", [5]="Get Buddys", [6]="Get Online Buddys", [7]="Get Buddy Info", [8]="Send Message", [9]="Reply Message" }) 
+	local f_cmd = ProtoField.uint16("Stkp.cmd","Command",base.HEX, { [1]="Request Login Token", [2]="Login", [3]="Keep Alive", [4]="Login Out", [5]="Get Buddys", [6]="Get Online Buddys", [7]="Get Buddy Info", [8]="Get My Group", [9]="Get Group Info", [10]="Send Message", [11]="Reply Message", [12]="Send Group Message", [13]="Reply Group Message" }) 
 	local f_sid = ProtoField.uint16("Stkp.sid","Session ID")
 	local f_uid = ProtoField.uint32("Stkp.uid","STK ID")
 	local f_token = ProtoField.uint32("Stkp.token","Token",base.HEX)
@@ -24,10 +24,22 @@ do
 	local f_phone = ProtoField.uint32("Stkp.phone","Phone")
 	local f_gender = ProtoField.uint32("Stkp.gender","Gender",base.HEX,{ [0]="Unknow", [1]="Boy", [2]="Girl"})
 
+	local f_groupnum = ProtoField.uint16("Stkp.groupnum","Group Numbers")
+	local f_groupid = ProtoField.uint32("Stkp.groupid","Group ID")
+
+	local f_reqgroupid = ProtoField.uint32("Stkp.reqgroupid","Group ID")
+	local f_groupname = ProtoField.string("Stkp.nickname","Group Name")
+	local f_g_clientnum = ProtoField.uint16("Stkp.g_clientnum","Member Numbers")
+	local f_g_clientid = ProtoField.uint32("Stkp.g_clientid","Member ID")
+
+
 	local f_chatbuddy = ProtoField.uint32("Stkp.chatbuddy","Chat buddy ID")
 	local f_msg = ProtoField.string("Stkp.msg","Chat Message")
 
-	p_Stkp.fields = { f_magic, f_version, f_cmd, f_sid, f_uid, f_token, f_reserve, f_flag, f_length, f_end, f_password, f_loginreverse, f_loginresult, f_clientnum, f_clientid, f_reqclientid, f_nickname, f_city, f_phone, f_gender, f_chatbuddy, f_msg }
+	local f_chatgroup = ProtoField.uint32("Stkp.chatgroup","Chat group ID")
+	local f_gmsg = ProtoField.string("Stkp.gmsg","Group Chat Message")
+
+	p_Stkp.fields = { f_magic, f_version, f_cmd, f_sid, f_uid, f_token, f_reserve, f_flag, f_length, f_end, f_password, f_loginreverse, f_loginresult, f_clientnum, f_clientid, f_reqclientid, f_nickname, f_city, f_phone, f_gender, f_chatbuddy, f_msg, f_groupnum, f_groupid, f_reqgroupid, f_groupname, f_g_clientnum, f_g_clientid, f_chatgroup, f_gmsg }
 	
 	local data_dis = Dissector.get("data")
 	
@@ -79,9 +91,29 @@ do
 			t:add(f_phone,buf(72,4))
 			t:add(f_gender,buf(76,1))
 		elseif(stkcmd == 8) then
+			if (flag == 1) then
+				t:add(f_groupnum,buf(20,2))
+				local groupnums = buf(20,2):uint()
+				for i=0,groupnums-1,1 do
+					t:add(f_groupid,buf(22+i*4,4))
+				end
+			end
+		elseif(stkcmd == 9) then
+			t:add(f_reqgroupid,buf(20,4))
+			t:add(f_groupname,buf(24,32))
+			t:add(f_g_clientnum,buf(56,2))
+			local g_clientnums = buf(56,2):uint()
+			for i=0,g_clientnums-1,1 do
+				t:add(f_g_clientid,buf(58+i*4,4))
+			end
+		elseif(stkcmd == 10) then
 			t:add(f_chatbuddy,buf(20,4))
 			t:add(f_msg,buf(24,bodylen-4))
-		elseif(stkcmd == 9) then
+		elseif(stkcmd == 11) then
+		elseif(stkcmd == 12) then
+			t:add(f_chatgroup,buf(20,4))
+			t:add(f_gmsg,buf(24,bodylen-4))
+		elseif(stkcmd == 13) then
 		end
 		
 		t:add(f_end,buf(20+bodylen,1))

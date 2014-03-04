@@ -14,22 +14,10 @@
 
 #define STK_MAX_PACKET_SIZE    65535
 #define STK_STDIN_SIZE         4096
-#define STK_NICKNAME_SIZE      32
-#define STK_PASS_SIZE          32
-#define STK_CITY_SIZE          16
-#define STK_LOGIN_REVERSE_SIZE 64
 
-#define STK_IPADDR_LENGTH      16
-#define STK_DATA_ZERO_LENGTH   0
 
 #define STK_MAX_SIZE           4096
 #define STK_DEFAULT_SIZE       64
-
-#define STK_ID_LENGTH          4
-#define STK_PHONE_LENGTH       4
-#define STK_GENDER_LENGTH      1
-
-#define STK_ID_NUM_LENGTH      2
 
 #define STK_CLIENT_OFFLINE     0
 #define STK_CLIENT_ONLINE      1
@@ -72,6 +60,20 @@
 #define socket_t  int
 #endif
 
+typedef struct _group_member{
+    unsigned int uid;
+    struct _group_member *next;
+}group_member;
+
+typedef struct _stk_group{
+    unsigned int  groupid;
+    unsigned char groupname[STK_GROUP_NAME_SIZE];
+    int           member_num;
+    group_member  *members;
+    struct _stk_group *next;
+    GtkWidget *menu;
+}stk_group;
+
 typedef struct{
     unsigned int  uid;
     unsigned char nickname[STK_NICKNAME_SIZE];
@@ -80,6 +82,8 @@ typedef struct{
     unsigned char gender;
     unsigned char pass[STK_PASS_SIZE];
     unsigned char serverip[STK_IPADDR_LENGTH];
+    int           group_num;
+    stk_group     *group;
     socket_t fd;
     int state;
 }client_config;

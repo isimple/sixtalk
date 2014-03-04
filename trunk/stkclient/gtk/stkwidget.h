@@ -59,7 +59,9 @@
 
 /* userinfo button image */
 #define STK_AVATAR_PNG        "pixmaps/avatar.png"
+#define STK_AVATAR_GIRL_PNG  "pixmaps/avatar_girl.png"
 #define STK_BUDDY_PNG         "pixmaps/buddy.png"
+#define STK_GROUP_PNG         "pixmaps/group.png"
 
 /* connect waiting image */
 #define STK_CONNECT_PNG       "pixmaps/logining.png"
@@ -73,9 +75,18 @@
 
 enum
 {
-  STK_PIXBUF_COL,
-  STK_TEXT_COL,
-  STK_COL_NUM
+  STK_BUDDY_PIXBUF_COL,
+  STK_BUDDY_ID_COL,
+  STK_BUDDY_NAME_COL,
+  STK_BUDDY_COL_NUM
+};
+
+enum
+{
+  STK_GROUP_PIXBUF_COL,
+  STK_GROUP_ID_COL,
+  STK_GROUP_NAME_COL,
+  STK_GROUP_COL_NUM
 };
 
 typedef struct{
@@ -104,7 +115,8 @@ typedef struct{
 typedef struct{
     GtkWidget     *mainw;
     GtkStatusIcon *tray;
-    GtkWidget     *treev;
+    GtkWidget     *buddytree;
+    GtkWidget     *grouptree;
     LoginWidget   loginw;
     ImageButton   cbtn;
     ImageButton   minbtn;

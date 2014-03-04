@@ -215,7 +215,7 @@ int stk_login(socket_t fd, char *buf, int max_len, unsigned int uid, char *passw
 
 }
 
-int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy)
+int stk_send_getbuddyinfo(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int n_uid, stk_buddy *buddy)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
@@ -227,7 +227,7 @@ int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, u
     }
 
     memset(buf, 0, max_len);
-    stk_init_head((stkp_head *)buf, STKP_CMD_GET_INFO, uid);
+    stk_init_head((stkp_head *)buf, STKP_CMD_GET_USER_INFO, uid);
 
     tmp = buf+sizeof(stkp_head);
     
@@ -245,13 +245,13 @@ int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, u
     len++;
 
     if (len != send(fd, buf, len, 0)) {
-        stk_print("stk_send_getprofile: send msg error\n");
+        stk_print("stk_send_getbuddyinfo: send msg error\n");
         return -1;
     }
 
     len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
     if (len == -1){
-        stk_print("stk_send_getprofile: recv socket error\n");
+        stk_print("stk_send_getbuddyinfo: recv socket error\n");
         return -1;
     }
 
@@ -261,10 +261,10 @@ int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, u
         || head->stkp_version != htons(STKP_VERSION)
         || !STKP_TEST_FLAG(head->stkp_flag)
         || head->stkp_uid != htonl(uid)
-        || head->stkp_cmd != htons(STKP_CMD_GET_INFO))
+        || head->stkp_cmd != htons(STKP_CMD_GET_USER_INFO))
 
     {
-        stk_print("#3. bad msg, drop packet.\n");
+        stk_print("stk_send_getbuddyinfo: bad msg, drop packet.\n");
         return -1;
     } else {
         tmp = buf + sizeof(stkp_head);
@@ -272,7 +272,7 @@ int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, u
         memcpy(&buddy->uid, tmp, STK_ID_LENGTH);
         buddy->uid = ntohl(buddy->uid);
         if (buddy->uid == 0) {
-            stk_print("Error, bad uid.\n");
+            stk_print("stk_send_getbuddyinfo: Error, bad uid.\n");
             return -1;
         }
 
@@ -291,11 +291,11 @@ int stk_send_getprofile(socket_t fd, char *buf, int max_len, unsigned int uid, u
     }
 }
 
-int stk_send_getbuddylist(socket_t fd, char *buf, int max_len, unsigned int uid)
+int stk_send_getbuddy(socket_t fd, char *buf, int max_len, unsigned int uid)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
-    unsigned short buddy_num;
+    int buddy_num;
     unsigned int buddy_uid;
     stk_buddy buddy;
     stk_buddy *next_buddy = NULL;
@@ -316,13 +316,13 @@ int stk_send_getbuddylist(socket_t fd, char *buf, int max_len, unsigned int uid)
     buf[len++] = STKP_PACKET_TAIL;
 
     if (len != send(fd, buf, len, 0)) {
-        stk_print("stk_send_getbuddylist: send msg error\n");
+        stk_print("stk_send_getbuddy: send msg error\n");
         return -1;
     }
 
     len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
     if (len == -1){
-        stk_print("stk_send_getbuddylist: recv socket error\n");
+        stk_print("stk_send_getbuddy: recv socket error\n");
         return -1;
     }
 
@@ -335,7 +335,7 @@ int stk_send_getbuddylist(socket_t fd, char *buf, int max_len, unsigned int uid)
         || head->stkp_cmd != htons(STKP_CMD_GET_USER))
 
     {
-        stk_print("#4. bad msg, drop packet.\n");
+        stk_print("stk_send_getbuddy: bad msg, drop packet.\n");
         return -1;
     } else {
         tmp = buf + sizeof(stkp_head);
@@ -356,21 +356,208 @@ int stk_send_getbuddylist(socket_t fd, char *buf, int max_len, unsigned int uid)
             buddy.uid = ntohl(buddy_uid);
 
             if (stk_add_buddy(&buddy) < 0) {
-                stk_print("Error Add buddy.\n");
+                stk_print("stk_send_getbuddy: Error Add buddy.\n");
                 continue;
             }
         }
 
-        /* Now, get buddy profile */
+        /* now, get buddy profile */
         next_buddy = NULL;
         buddy_num = stk_get_buddynum();
         while (buddy_num--) {
-            next_buddy = stk_get_next(next_buddy);
+            next_buddy = stk_next_buddy(next_buddy);
             memset(&buddy, 0, sizeof(stk_buddy));
-            if (stk_send_getprofile(fd, buf, max_len, uid, next_buddy->uid, &buddy) != -1) {
+            if (stk_send_getbuddyinfo(fd, buf, max_len, uid, next_buddy->uid, &buddy) != -1) {
                 stk_update_buddy(&buddy);
             }
         }
+        return 0;
+    }
+
+}
+
+int stk_send_getgroupinfo(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int gid, stk_group *group)
+{
+    stkp_head *head = NULL;
+    group_member *member, *member_tmp;
+    char *tmp = NULL;
+    unsigned int gid_n, memberid;
+    unsigned short num, i;
+    int len;
+
+    if (buf == NULL) {
+        return -1;
+    }
+
+    memset(buf, 0, max_len);
+    stk_init_head((stkp_head *)buf, STKP_CMD_GET_GROUP_INFO, uid);
+
+    tmp = buf+sizeof(stkp_head);
+    
+    len = htons(STK_GID_LENGTH+STK_GROUP_NAME_SIZE+STK_ID_NUM_LENGTH);
+    memcpy(tmp-2, &len, 2);
+
+    /* Use int to replace string */
+    //sprintf(info, "%d", uid);
+    //memcpy(tmp, info, STK_ID_LENGTH);
+    gid_n = htonl(gid);
+    memcpy(tmp, &gid_n, STK_GID_LENGTH);
+
+    len = STK_GID_LENGTH+STK_GROUP_NAME_SIZE+STK_ID_NUM_LENGTH+sizeof(stkp_head);
+    buf[len] = STKP_PACKET_TAIL;
+    len++;
+
+    if (len != send(fd, buf, len, 0)) {
+        stk_print("stk_send_getgroupinfo: send msg error\n");
+        return -1;
+    }
+
+    len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
+    if (len == -1){
+        stk_print("stk_send_getgroupinfo: recv socket error\n");
+        return -1;
+    }
+
+    head = (stkp_head *)buf;
+
+    if (head->stkp_magic != htons(STKP_MAGIC) 
+        || head->stkp_version != htons(STKP_VERSION)
+        || !STKP_TEST_FLAG(head->stkp_flag)
+        || head->stkp_uid != htonl(uid)
+        || head->stkp_cmd != htons(STKP_CMD_GET_GROUP_INFO))
+
+    {
+        stk_print("stk_send_getgroupinfo: bad msg, drop packet.\n");
+        return -1;
+    } else {
+        tmp = buf + sizeof(stkp_head);
+
+        memcpy(&gid_n, tmp, STK_GID_LENGTH);
+        gid_n = ntohl(gid_n);
+        if (gid_n != gid || gid_n == 0) {
+            stk_print("stk_send_getgroupinfo: Error, bad gid.\n");
+            return -1;
+        }
+
+        tmp += STK_GID_LENGTH;
+        memcpy(group->groupname, tmp, STK_GROUP_NAME_SIZE);
+
+        tmp += STK_GROUP_NAME_SIZE;
+        memcpy(&num, tmp, STK_ID_NUM_LENGTH);
+        num = ntohs(num);
+        group->member_num = num;
+        tmp += STK_ID_NUM_LENGTH;
+
+        i = 0;
+        while (i < num) {
+            memcpy(&memberid, tmp, STK_ID_LENGTH);
+            tmp += STK_ID_LENGTH;
+            memberid = ntohl(memberid);
+
+            member = (group_member *)malloc(sizeof(group_member));
+            member->uid = memberid;
+            member->next = NULL;
+            if (i == 0) {
+                group->members = member;
+                member_tmp = group->members;
+            } else {
+                member_tmp->next = member;
+                member_tmp = member_tmp->next;
+            }
+            i++;
+        }
+        return 0;
+    }
+}
+
+
+int stk_send_getgroup(socket_t fd, char *buf, int max_len, unsigned int uid, client_config *client)
+{
+    stkp_head *head = NULL;
+    char *tmp = NULL;
+    int group_num;
+    unsigned int group_uid;
+    stk_group *gtmp1, *gtmp2;;
+    int i;
+    int len;
+
+    if (buf == NULL) {
+        return -1;
+    }
+
+    memset(buf, 0, max_len);
+    stk_init_head((stkp_head *)buf, STKP_CMD_GET_GROUP, uid);
+
+    len = htons(STK_DATA_ZERO_LENGTH);
+    memcpy(buf+sizeof(stkp_head)-2, &len, 2);
+
+    len = sizeof(stkp_head);
+    buf[len++] = STKP_PACKET_TAIL;
+
+    if (len != send(fd, buf, len, 0)) {
+        stk_print("stk_send_getgroup: send msg error\n");
+        return -1;
+    }
+
+    len = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
+    if (len == -1){
+        stk_print("stk_send_getgroup: recv socket error\n");
+        return -1;
+    }
+
+    head = (stkp_head *)buf;
+
+    if (head->stkp_magic != htons(STKP_MAGIC) 
+        || head->stkp_version != htons(STKP_VERSION)
+        || !STKP_TEST_FLAG(head->stkp_flag)
+        || head->stkp_uid != htonl(uid)
+        || head->stkp_cmd != htons(STKP_CMD_GET_GROUP))
+
+    {
+        stk_print("stk_send_getgroup: bad msg, drop packet.\n");
+        return -1;
+    } else {
+        tmp = buf + sizeof(stkp_head);
+
+        memcpy(&group_num, tmp, STK_GID_NUM_LENGTH);
+        tmp += STK_GID_NUM_LENGTH;
+
+        group_num = ntohs(group_num);
+        client->group_num = group_num;
+        i = 0;
+        while (i < group_num) {
+            memcpy(&group_uid, tmp, STK_GID_LENGTH);
+            tmp += STK_GID_LENGTH;
+            group_uid = ntohl(group_uid);
+
+            gtmp2 = (stk_group *)malloc(sizeof(stk_group));
+            if (gtmp2 == NULL) {
+                printf("what the fuck!\n");
+                continue;
+            }
+            gtmp2->groupid = group_uid;
+            gtmp2->next = NULL;
+            if (i == 0) {
+                client->group = gtmp2;
+                gtmp1 = client->group;
+            } else {
+                gtmp1->next = gtmp2;
+                gtmp1 = gtmp1->next;
+            }
+            i++;
+        }
+
+        /* now, get group info */
+        group_num = client->group_num;
+        gtmp1 = client->group;
+        while (group_num-- && gtmp1 != NULL) {
+            group_uid = gtmp1->groupid;
+            if (stk_send_getgroupinfo(fd, buf, max_len, uid, group_uid, gtmp1) == -1) {
+                stk_print("stk_send_getgroup: something wrong when get group info.\n");
+            }
+            gtmp1 = gtmp1->next;
+        }
+
         return 0;
     }
 
