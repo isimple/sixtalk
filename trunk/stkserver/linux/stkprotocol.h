@@ -21,10 +21,10 @@ enum {
     STKP_CMD_GET_USER_INFO   = 0x0007,
     STKP_CMD_GET_GROUP       = 0x0008,
     STKP_CMD_GET_GROUP_INFO  = 0x0009,
-    STKP_CMD_SEND_MSG        = 0x0010,
-    STKP_CMD_REPLY_MSG       = 0x0011,
-    STKP_CMD_SEND_GMSG       = 0x0012,
-    STKP_CMD_REPLY_GMSG      = 0x0013,
+    STKP_CMD_SEND_MSG        = 0x000A,
+    STKP_CMD_REPLY_MSG       = 0x000B,
+    STKP_CMD_SEND_GMSG       = 0x000C,
+    STKP_CMD_REPLY_GMSG      = 0x000D,
     STKP_CMD_END             = 0x00FF
 };
 

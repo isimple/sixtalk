@@ -327,6 +327,10 @@ int stk_add_msg(stk_client *client, char *data, int size)
     if (client == NULL || data == NULL)
         return -1;
 
+    if (client->stkc_state == STK_CLIENT_OFFLINE) {
+        return -1;
+    }
+
     chatmsg = (chat_message *)malloc(sizeof(chat_message));
     if (chatmsg == NULL) {
         printf("Error while malloc for chatmsg\n");

@@ -535,6 +535,7 @@ int stk_send_getgroup(socket_t fd, char *buf, int max_len, unsigned int uid, cli
                 printf("what the fuck!\n");
                 continue;
             }
+            memset(gtmp2, 0, sizeof(stk_group));
             gtmp2->groupid = group_uid;
             gtmp2->next = NULL;
             if (i == 0) {
@@ -564,27 +565,35 @@ int stk_send_getgroup(socket_t fd, char *buf, int max_len, unsigned int uid, cli
 }
 
 
-int stk_send_msg(socket_t fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int n_uid)
+int stk_send_msg(socket_t fd, char *buf, int max_len, char *data, int data_len, 
+                                unsigned int uid, unsigned int id, gboolean gmsg)
 {
     stkp_head *head = NULL;
     char *tmp = NULL;
-    unsigned int uid_n;
+    unsigned int id_n;
+    unsigned short cmd;
     int len;
 
     if (buf == NULL) {
         return -1;
     }
 
+    if (gmsg) {
+        cmd = STKP_CMD_SEND_GMSG;
+    } else {
+        cmd = STKP_CMD_SEND_MSG;
+    }
+		
     memset(buf, 0, max_len);
-    stk_init_head((stkp_head *)buf, STKP_CMD_SEND_MSG, uid);
+    stk_init_head((stkp_head *)buf, cmd, uid);
 
     tmp = buf+sizeof(stkp_head);
     
     len = htons(STK_ID_LENGTH+data_len);
     memcpy(tmp-2, &len, 2);
 
-    uid_n = htonl(n_uid);
-    memcpy(tmp, &uid_n, STK_ID_LENGTH);
+    id_n = htonl(id);
+    memcpy(tmp, &id_n, STK_ID_LENGTH);
 
     tmp += STK_ID_LENGTH;
     memcpy(tmp, data, data_len);
@@ -605,7 +614,7 @@ int stk_recv_msg(client_config *client)
     unsigned char recvbuf[STK_MAX_PACKET_SIZE] = {0};
     stkp_head *head = NULL;
     char *tmp = NULL;
-    unsigned int uid;
+    unsigned int uid, gid;
     int len;
 
     while (1) {
@@ -633,6 +642,9 @@ int stk_recv_msg(client_config *client)
             unsigned short cmd;
             char data[STK_MAX_PACKET_SIZE] = {0};
             stk_buddy *buddy;
+            stk_group *group;
+            int num;
+            gboolean found;
 
             cmd = ntohs(head->stkp_cmd);
             switch (cmd) {
@@ -655,6 +667,37 @@ int stk_recv_msg(client_config *client)
                 else {
                     if (!stk_add_msg(buddy, data, size)) {
                         stk_msg_event(buddy);
+                    }
+                }
+                break;
+            case STKP_CMD_SEND_GMSG:
+                tmp = recvbuf + sizeof(stkp_head);
+                memcpy(&size, tmp-2, 2);
+
+                size = ntohs(size) - STK_ID_LENGTH;
+                tmp += STK_ID_LENGTH;
+                memcpy(data, tmp, size);
+                data[size] = '\0';
+
+                uid = ntohl(head->stkp_uid);
+                memcpy(&gid, tmp-4, STK_GID_LENGTH);
+                gid = ntohl(gid);
+
+                found = FALSE;
+                num = client->group_num;
+                group = client->group;
+                while (num-- && group != NULL) {
+                    if (group->groupid == gid) {
+						found = TRUE;
+                        break;
+                    }
+				}
+
+                if (!found || group == NULL) 
+                    stk_print("Bad group!!\n");
+                else {
+                    if (!stk_add_gmsg(group, data, size, uid)) {
+                        stk_gmsg_event(group);
                     }
                 }
                 break;

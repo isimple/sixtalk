@@ -7,8 +7,8 @@
 
 CPP     = g++.exe
 CC      = gcc.exe
-OBJ     = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
-LINKOBJ = stkclient.o stkui.o stkchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
+OBJ     = stkclient.o stkui.o stkchat.o stkgchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
+LINKOBJ = stkclient.o stkui.o stkchat.o stkgchat.o stkpacket.o stkbuddy.o stkutil.o stkwav.o
 LIBS    = -L"C:/Dev-Cpp/lib" $(shell pkg-config --libs gtk+-2.0) -lws2_32 -lwinmm #-mwindows
 INCS    = -I"C:/Dev-Cpp/include" 
 CFLAGS  = $(INCS) $(shell pkg-config --cflags gtk+-2.0)
@@ -34,6 +34,9 @@ stkui.o: stkui.c
 
 stkchat.o: stkchat.c
 	$(CC) -c stkchat.c -o stkchat.o $(CFLAGS)
+
+stkgchat.o: stkgchat.c
+	$(CC) -c stkgchat.c -o stkgchat.o $(CFLAGS)
 
 stkpacket.o: stkpacket.c
 	$(CC) -c stkpacket.c -o stkpacket.o $(CFLAGS)

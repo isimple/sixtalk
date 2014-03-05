@@ -60,10 +60,30 @@
 #define socket_t  int
 #endif
 
+typedef struct _gchat_message{
+    unsigned int uid;
+    int  msg_len;
+    char *timestamp;
+    char *msg;
+    struct _gchat_message *next;
+}gchat_message;
+
 typedef struct _group_member{
     unsigned int uid;
     struct _group_member *next;
 }group_member;
+
+typedef struct{
+    int show;
+    GtkWidget *window;
+    GtkWidget *toolbox;
+    GtkWidget *show_scrolled,*input_scrolled;
+    GtkWidget *show_view,*input_view;
+    GtkTextBuffer *show_buffer,*input_buffer;
+    GtkWidget *send_button,*close_button;
+    GtkWidget *hbox,*vbox;
+    GtkTextTag *minfo, *binfo, *mtext, *btext;
+}gchat_widgets;
 
 typedef struct _stk_group{
     unsigned int  groupid;
@@ -72,28 +92,17 @@ typedef struct _stk_group{
     group_member  *members;
     struct _stk_group *next;
     GtkWidget *menu;
+    gchat_widgets gchat;
+    int gmsg_num;
+    gchat_message *gchatmsg;
 }stk_group;
 
-typedef struct{
-    unsigned int  uid;
-    unsigned char nickname[STK_NICKNAME_SIZE];
-    unsigned char city[STK_CITY_SIZE];
-    unsigned int  phone;
-    unsigned char gender;
-    unsigned char pass[STK_PASS_SIZE];
-    unsigned char serverip[STK_IPADDR_LENGTH];
-    int           group_num;
-    stk_group     *group;
-    socket_t fd;
-    int state;
-}client_config;
-
-struct chat_message{
+typedef struct _chat_message{
     int  msg_len;
     char *timestamp;
     char *msg;
-    struct chat_message *next;
-};
+    struct _chat_message *next;
+}chat_message;
 
 typedef struct{
     int show;
@@ -119,8 +128,22 @@ typedef struct{
     GtkWidget *menu;
     chat_widgets chat;
     int msg_num;
-    struct chat_message *chatmsg;
+    chat_message *chatmsg;
 }stk_buddy;
+
+typedef struct{
+    unsigned int  uid;
+    unsigned char nickname[STK_NICKNAME_SIZE];
+    unsigned char city[STK_CITY_SIZE];
+    unsigned int  phone;
+    unsigned char gender;
+    unsigned char pass[STK_PASS_SIZE];
+    unsigned char serverip[STK_IPADDR_LENGTH];
+    int           group_num;
+    stk_group     *group;
+    socket_t fd;
+    int state;
+}client_config;
 
 #endif /* _STKCLIENT_H_ */
 

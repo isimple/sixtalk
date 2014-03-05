@@ -395,7 +395,7 @@ int stk_getgroupinfo_ack(stk_client *client, char *buf)
         memset(tmp, 0, STK_GID_LENGTH);
     } else {
         tmp += STK_GID_LENGTH;
-        memcpy(tmp, group->groupid, STK_GROUP_NAME_SIZE);
+        memcpy(tmp, group->groupname, STK_GROUP_NAME_SIZE);
 
         tmp += STK_GROUP_NAME_SIZE;
         num = htons(group->member_num);
@@ -471,11 +471,24 @@ int stk_sendgmsg_ack(stk_client *client, char *buf, int bytes)
         /* msg to a unknow group, I beleive it's not impossible */
         return 0;
     } else {
+        num = group->member_num;
         member = group->members;
-        while (member != NULL) {
+        while (num-- && member != NULL) {
+            if (member->uid == client->stkc_uid) {
+                member = member->next;
+                continue;
+            }
             user = stk_find_user(member->uid);
-            if (!stk_add_msg(user, buf, bytes)) {
-                pthread_kill(user->stkc_tid, SIGUSR1);
+
+            if (user == NULL) {
+                return 0;
+            } else if (user->stkc_state == STK_CLIENT_OFFLINE) {
+                /* user offline, need to do something? */
+                return 0;
+            } else if (user->stkc_state == STK_CLIENT_ONLINE) {
+                if (!stk_add_msg(user, buf, bytes)) {
+                    pthread_kill(user->stkc_tid, SIGUSR1);
+                }
             }
             member = member->next;
         }

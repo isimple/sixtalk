@@ -167,7 +167,7 @@ gboolean stk_deliver_msg(stk_client *client)
 
         if (len != send(client->stkc_fd, msg, len, 0)) {
             printf("stk_deliver_msg: deliver msg error\n");
-            break;
+            continue;
         }
     }
 
@@ -476,6 +476,7 @@ int stk_sendgmsg_ack(stk_client *client, char *buf, int bytes)
     stk_client *user;
     char *tmp = NULL;
     unsigned int gid;
+    int num;
     int ret;
 
     tmp = buf + sizeof(stkp_head);
@@ -487,11 +488,24 @@ int stk_sendgmsg_ack(stk_client *client, char *buf, int bytes)
         /* msg to a unknow group, I beleive it's not impossible */
         return 0;
     } else {
+        num = group->member_num;
         member = group->members;
-        while (member != NULL) {
+        while (num-- && member != NULL) {
+            if (member->uid == client->stkc_uid) {
+                member = member->next;
+                continue;
+            }
             user = stk_find_user(member->uid);
-            if (!stk_add_msg(user, buf, bytes)) {
-                g_idle_add((GSourceFunc)stk_deliver_msg, (gpointer)user);
+
+            if (user == NULL) {
+                return 0;
+            } else if (user->stkc_state == STK_CLIENT_OFFLINE) {
+                /* user offline, need to do something? */
+                return 0;
+            } else if (user->stkc_state == STK_CLIENT_ONLINE) {
+                if (!stk_add_msg(user, buf, bytes)) {
+                    g_idle_add((GSourceFunc)stk_deliver_msg, (gpointer)user);
+                }
             }
             member = member->next;
         }
@@ -512,6 +526,8 @@ void stk_socket_thread(void *arg)
     data = (stk_data *)malloc(sizeof(stk_data));
 
     while(1) {
+        stk_client *tmp_client = NULL;
+
         bytes = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
         if (bytes == -1){
             printf("stk_socket_thread: recv socket error, maybe we should check client is alive or not.\n");
@@ -529,15 +545,22 @@ void stk_socket_thread(void *arg)
         } 
 
         memset(data, 0, sizeof(stk_data));
-        client = stk_parse_packet(buf, bytes, data);
-        if (client != NULL ){
+        tmp_client = stk_parse_packet(buf, bytes, data);
+
+        if (client == NULL) {
+            if (data->cmd != STKP_CMD_REQ_LOGIN && data->cmd != STKP_CMD_LOGIN) {
+                printf("Error happen, Continue.\n");
+                continue;
+            }
+            client = tmp_client;
+        } else {
             client->stkc_data = data;
-        } else if (data->cmd != STKP_CMD_REQ_LOGIN && data->cmd != STKP_CMD_LOGIN) {
-            printf("Error happen, Continue.\n");
-            continue;
+            if (client != tmp_client) {
+                printf("Oops! who's msg!\n");
+            }
         }
 
-        printf("Get stkclient msg, CMD: %d\n", data->cmd);
+        printf("Get stkclient msg, CMD: %X\n", data->cmd);
 
         switch (data->cmd) {
         case STKP_CMD_REQ_LOGIN:
@@ -578,6 +601,7 @@ void stk_socket_thread(void *arg)
             break;
         }
     }
+	
     free(data);
     close(fd);
 }

@@ -53,6 +53,8 @@
 
 /*  */
 #define STK_SESSION_PNG       "pixmaps/buddy.png"
+#define STK_GSESSION_PNG      "pixmaps/group.png"
+
 #define STK_CHAT_PNG          "pixmaps/chat.png"
 #define STK_VOICE_PNG         "pixmaps/voice.png"
 #define STK_VIDEO_PNG         "pixmaps/video.png"

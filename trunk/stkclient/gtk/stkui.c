@@ -342,7 +342,8 @@ static gboolean stk_group_lclick(GtkWidget *widget, GdkEventButton *event)
     stk_group *group = NULL;
     char *gidstr;
     unsigned int gid;
-    unsigned short num;
+    int num;
+    gboolean found = FALSE;
 
     model = gtk_tree_view_get_model(GTK_TREE_VIEW(tree)); 
     selection = gtk_tree_view_get_selection(tree);
@@ -354,13 +355,15 @@ static gboolean stk_group_lclick(GtkWidget *widget, GdkEventButton *event)
     num = client.group_num;
     group = client.group;
     while (num-- && group != NULL) {
-        if (group->groupid == gid) 
+        if (group->groupid == gid) {
+            found = TRUE;
             break;
+        }
         group = group->next;
     }
 
     /* this can not be happen!! */
-    if (num == 0 && group == NULL) {
+    if (!found || group == NULL) {
         stk_message("STK Error", "Bad Group");
         return FALSE;
     }
@@ -369,7 +372,7 @@ static gboolean stk_group_lclick(GtkWidget *widget, GdkEventButton *event)
         gtk_menu_popup(GTK_MENU(group->menu), NULL, NULL,NULL, NULL, event->button, event->time);
         return TRUE;
     } else if (event->type == GDK_2BUTTON_PRESS && event->button == 0x1) {
-        stk_chatwin_show(NULL, (gpointer)group);
+        stk_gchatwin_show(NULL, (gpointer)group);
         return TRUE;
     } else {
         return FALSE;
@@ -385,7 +388,7 @@ static void stk_group_rclick (stk_group *group)
     separator = gtk_separator_menu_item_new();
 
     g_signal_connect(G_OBJECT(group_info), "activate", G_CALLBACK(stk_group_show), (gpointer)group);
-    g_signal_connect(G_OBJECT(gchat), "activate", G_CALLBACK(stk_chatwin_show), (gpointer)group);
+    g_signal_connect(G_OBJECT(gchat), "activate", G_CALLBACK(stk_gchatwin_show), (gpointer)group);
 
     gtk_menu_shell_append(GTK_MENU_SHELL(group->menu), group_info);
     gtk_menu_shell_append(GTK_MENU_SHELL(group->menu), separator);
@@ -599,7 +602,7 @@ void stk_buddywin_create(StkWidget *widgets)
     group = client.group;
     while (num-- && group != NULL) {
         char gid[STK_DEFAULT_SIZE] = {0};
-        char gname[STK_DEFAULT_SIZE] = "DefaultGroupName";
+        char gname[STK_DEFAULT_SIZE] = {0};
         sprintf(gid, "%u", group->groupid);
         strcpy(gname, group->groupname);
         stk_grouptree_fill(tree, gid, gname);
