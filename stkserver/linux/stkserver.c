@@ -31,6 +31,8 @@ void *stk_main(void *arg)
     signal(SIGUSR1, stk_deliver_msg);
 
     while(1) {
+        stk_client *tmp_client = NULL;
+
         bytes = recv(fd, buf, STK_MAX_PACKET_SIZE, 0);
         if (bytes == -1){
             printf("recv socket error: %s(errno: %d)",strerror(errno),errno);
@@ -48,12 +50,19 @@ void *stk_main(void *arg)
         } 
 
         memset(data, 0, sizeof(stk_data));
-        client = stk_parse_packet(buf, bytes, data);
-        if (client != NULL ){
+        tmp_client = stk_parse_packet(buf, bytes, data);
+
+        if (client == NULL) {
+            if (data->cmd != STKP_CMD_REQ_LOGIN && data->cmd != STKP_CMD_LOGIN) {
+                printf("Error happen, Continue.\n");
+                continue;
+            }
+            client = tmp_client;
+        } else {
             client->stkc_data = data;
-        } else if (data->cmd != STKP_CMD_REQ_LOGIN && data->cmd != STKP_CMD_LOGIN) {
-            printf("Error happen, Continue.\n");
-            continue;
+            if (client != tmp_client) {
+                printf("Oops! who's msg!\n");
+            }
         }
 
         printf("Get STK Client msg, CMD: %d\n", data->cmd);

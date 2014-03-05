@@ -297,7 +297,7 @@ gboolean stk_msg_send(GtkWidget *widget, stk_buddy *buddy)
         /* If there is no input,do nothing but return */
         if(strcmp(text,"")!=0)
         {
-            stk_send_msg(client.fd, sendbuf, STK_MAX_PACKET_SIZE, text, strlen(text), client.uid, buddy->uid);
+            stk_send_msg(client.fd, sendbuf, STK_MAX_PACKET_SIZE, text, strlen(text), client.uid, buddy->uid, FALSE);
             stk_msg_show(buddy, text);
         } else {
             stk_message(NULL, "Message should not NULL...\n");

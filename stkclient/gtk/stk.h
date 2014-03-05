@@ -56,6 +56,16 @@ void stk_msg_event(stk_buddy *buddy);
 
 /*
  *********************************************
+ *              stkgchat.c                  *
+ *********************************************
+ */
+void stk_gchatwin_show(GtkWidget *widget, stk_group *group);
+gboolean stk_gmsg_send(GtkWidget *widget, stk_group *group);
+void stk_gmsg_event(stk_group *group);
+
+
+/*
+ *********************************************
  *              stkpacket.c                  *
  *********************************************
  */
@@ -67,7 +77,7 @@ int stk_send_getbuddyinfo(socket_t fd, char *buf, int max_len, unsigned int uid,
 int stk_send_getbuddy(socket_t fd, char *buf, int max_len, unsigned int uid);
 int stk_send_getgroupinfo(socket_t fd, char *buf, int max_len, unsigned int uid, unsigned int gid, stk_group *group);
 int stk_send_getgroup(socket_t fd, char *buf, int max_len, unsigned int uid, client_config *client);
-int stk_send_msg(socket_t fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int n_uid);
+int stk_send_msg(socket_t fd, char *buf, int max_len, char *data, int data_len, unsigned int uid, unsigned int id, gboolean gmsg);
 int stk_recv_msg(client_config *client);
 
 

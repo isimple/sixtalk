@@ -246,20 +246,15 @@ void stk_get_groupinfo(stk_group *group, char *buf)
     return;
 }
 
-int stk_init_msg(struct chat_message *chatmsg)
-{
-
-}
-
 int stk_add_msg(stk_buddy *buddy, char *data, int size)
 {
-    struct chat_message *chatmsg;
-    struct chat_message *tmp;
+    chat_message *chatmsg;
+    chat_message *tmp;
 
     if (data == NULL)
         return -1;
 
-    chatmsg = (struct chat_message *)malloc(sizeof(struct chat_message));
+    chatmsg = (chat_message *)malloc(sizeof(chat_message));
     if (chatmsg == NULL) {
         printf("Error while malloc for chatmsg\n");
         return -1;
@@ -301,7 +296,7 @@ int stk_add_msg(stk_buddy *buddy, char *data, int size)
 
 int stk_get_msg(stk_buddy *buddy, char *data, int *size, char *ts)
 {
-    struct chat_message *tmp;
+    chat_message *tmp;
 
     if (data == NULL || ts == NULL)
         return -1;
@@ -327,4 +322,84 @@ int stk_get_msg(stk_buddy *buddy, char *data, int *size, char *ts)
 
     return 0;
 }
+
+int stk_add_gmsg(stk_group *group, char *data, int size, unsigned int uid)
+{
+    gchat_message *gchatmsg;
+    gchat_message *gtmp;
+
+    if (data == NULL)
+        return -1;
+
+    gchatmsg = (gchat_message *)malloc(sizeof(gchat_message));
+    if (gchatmsg == NULL) {
+        printf("Error while malloc for gchatmsg\n");
+        return -1;
+    }
+
+    gchatmsg->timestamp = (char *)malloc(STK_DEFAULT_SIZE);
+    if (gchatmsg->timestamp == NULL) {
+        printf("Error while malloc for chatmsg->timestamp\n");
+        free(gchatmsg);
+        return -1;
+    }
+
+    gchatmsg->msg = (char *)malloc(size);
+    if (gchatmsg->msg == NULL) {
+        printf("Error while malloc for gchatmsg->msg\n");
+        free(gchatmsg->timestamp);
+        free(gchatmsg);
+        return -1;
+    }
+
+    gchatmsg->uid = uid;
+    gchatmsg->msg_len = size;
+    stk_get_timestamp(gchatmsg->timestamp);
+    memcpy(gchatmsg->msg, data, size);
+    gchatmsg->next = gchatmsg;
+
+    if (group->gchatmsg == NULL || group->gmsg_num == 0) {
+        group->gchatmsg = gchatmsg;
+    } else {
+        gtmp = group->gchatmsg;
+        while(gtmp != gtmp->next) {
+            gtmp = gtmp->next;
+        }
+        gtmp->next = gchatmsg;
+    }
+    group->gmsg_num++;
+
+    return 0;
+}
+
+int stk_get_gmsg(stk_group *group, char *data, int *size, char *ts, unsigned int *uid)
+{
+    gchat_message *gtmp;
+
+    if (data == NULL || ts == NULL)
+        return -1;
+
+    gtmp = group->gchatmsg;
+    if(gtmp == NULL) {
+        return -1;
+    }
+
+    *size = gtmp->msg_len;
+    *uid = gtmp->uid;
+    memcpy(data, gtmp->msg, gtmp->msg_len);
+    strcpy(ts, gtmp->timestamp);
+    group->gchatmsg = gtmp->next;
+    group->gmsg_num--;
+
+    if (group->gmsg_num == 0) {
+        group->gchatmsg == NULL;
+    }
+
+    free(gtmp->msg);
+    free(gtmp->timestamp);
+    free(gtmp);
+
+    return 0;
+}
+
 
