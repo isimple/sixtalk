@@ -691,11 +691,10 @@ int stk_recv_msg(client_config *client)
 						found = TRUE;
                         break;
                     }
+                    group = group->next;
 				}
 
-                if (!found || group == NULL) 
-                    stk_print("Bad group!!\n");
-                else {
+                if (found && group != NULL) {
                     if (!stk_add_gmsg(group, data, size, uid)) {
                         stk_gmsg_event(group);
                     }
