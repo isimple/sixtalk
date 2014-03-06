@@ -461,6 +461,7 @@ int stk_sendgmsg_ack(stk_client *client, char *buf, int bytes)
     char *tmp = NULL;
     unsigned int gid;
     int ret;
+    int num;
 
     tmp = buf + sizeof(stkp_head);
 
