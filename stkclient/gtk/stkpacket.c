@@ -688,11 +688,11 @@ int stk_recv_msg(client_config *client)
                 group = client->group;
                 while (num-- && group != NULL) {
                     if (group->groupid == gid) {
-						found = TRUE;
+                        found = TRUE;
                         break;
                     }
                     group = group->next;
-				}
+                }
 
                 if (found && group != NULL) {
                     if (!stk_add_gmsg(group, data, size, uid)) {
