@@ -440,7 +440,7 @@ int stk_send_getgroupinfo(socket_t fd, char *buf, int max_len, unsigned int uid,
         }
 
         tmp += STK_GID_LENGTH;
-        memcpy(group->groupname, tmp, STK_GROUP_NAME_SIZE);
+        memcpy(group->gname, tmp, STK_GROUP_NAME_SIZE);
 
         tmp += STK_GROUP_NAME_SIZE;
         memcpy(&num, tmp, STK_ID_NUM_LENGTH);
@@ -536,7 +536,7 @@ int stk_send_getgroup(socket_t fd, char *buf, int max_len, unsigned int uid, cli
                 continue;
             }
             memset(gtmp2, 0, sizeof(stk_group));
-            gtmp2->groupid = group_uid;
+            gtmp2->gid = group_uid;
             gtmp2->next = NULL;
             if (i == 0) {
                 client->group = gtmp2;
@@ -552,7 +552,7 @@ int stk_send_getgroup(socket_t fd, char *buf, int max_len, unsigned int uid, cli
         group_num = client->group_num;
         gtmp1 = client->group;
         while (group_num-- && gtmp1 != NULL) {
-            group_uid = gtmp1->groupid;
+            group_uid = gtmp1->gid;
             if (stk_send_getgroupinfo(fd, buf, max_len, uid, group_uid, gtmp1) == -1) {
                 stk_print("stk_send_getgroup: something wrong when get group info.\n");
             }
@@ -687,7 +687,7 @@ int stk_recv_msg(client_config *client)
                 num = client->group_num;
                 group = client->group;
                 while (num-- && group != NULL) {
-                    if (group->groupid == gid) {
+                    if (group->gid == gid) {
                         found = TRUE;
                         break;
                     }

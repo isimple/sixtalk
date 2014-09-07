@@ -45,7 +45,7 @@ static void stk_gchatwin_create(stk_group *group)
     GtkWidget *image;
     GtkAccelGroup *gag;
 
-    sprintf(buf, "Chat In Group %s", group->groupname);
+    sprintf(buf, "Chat In Group %s", group->gname);
     group->gchat.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(group->gchat.window), buf);
     gtk_window_set_position(GTK_WINDOW(group->gchat.window), GTK_WIN_POS_CENTER);
@@ -246,7 +246,7 @@ gboolean stk_gmsg_send(GtkWidget *widget, stk_group *group)
     /* If there is no input,do nothing but return */
     if(strcmp(text,"")!=0) {
         stk_send_msg(client.fd, sendbuf, STK_MAX_PACKET_SIZE, text, strlen(text),
-                                                            client.uid, group->groupid, TRUE);
+                                                            client.uid, group->gid, TRUE);
         stk_gmsg_show(group, text);
     } else {
         stk_message(NULL, "Message should not NULL...\n");

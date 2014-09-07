@@ -366,7 +366,7 @@ int stk_getgroup_ack(stk_client *client, char *buf)
     num = client->stkc_groupnum;
     group = client->stkc_group;
     while (num-- && group != NULL) {
-        gid = group->groupid;
+        gid = group->gid;
         gid = htonl(gid);
         memcpy(tmp, &gid, STK_GID_LENGTH);
         tmp += STK_GID_LENGTH;
@@ -411,7 +411,7 @@ int stk_getgroupinfo_ack(stk_client *client, char *buf)
         memset(tmp, 0, STK_GID_LENGTH);
     } else {
         tmp += STK_GID_LENGTH;
-        memcpy(tmp, group->groupname, STK_GROUP_NAME_SIZE);
+        memcpy(tmp, group->gname, STK_GROUP_NAME_SIZE);
 
         tmp += STK_GROUP_NAME_SIZE;
         num = htons(group->member_num);

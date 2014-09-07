@@ -51,7 +51,7 @@ typedef struct{
 }stk_data;
 
 typedef struct _client_group{
-    unsigned int groupid;
+    unsigned int gid;
     struct _client_group *next;
 }client_group;
 
@@ -81,8 +81,8 @@ typedef struct _group_member{
 
 typedef struct{
     struct list_head list;
-    unsigned int  groupid;
-    unsigned char groupname[STK_GROUP_NAME_SIZE];
+    unsigned int  gid;
+    unsigned char gname[STK_GROUP_NAME_SIZE];
     int           member_num;
     group_member  *members;
     int           msg_num;

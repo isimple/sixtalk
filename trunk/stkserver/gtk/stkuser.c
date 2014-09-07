@@ -37,7 +37,7 @@ static int stk_init_mygroup(stk_client *client)
                     printf("what the fuck!\n");
                     break;
                 }
-                ctmp2->groupid = group->groupid;
+                ctmp2->gid = group->gid;
                 ctmp2->next = NULL;
                 if (cgnum == 0) {
                     client->stkc_group = ctmp2;
@@ -306,7 +306,7 @@ int stk_print_user(stk_client *client)
     printf("Gender\t\t%s\n", (client->stkc_gender == STK_GENDER_BOY)?"boy":"girl");
     printf("My groups:\t");
     while (cgroup != NULL) {
-        printf("%d\t", cgroup->groupid);
+        printf("%d\t", cgroup->gid);
         cgroup = cgroup->next;
     }
     printf("\n");  
