@@ -86,8 +86,8 @@ typedef struct{
 }gchat_widgets;
 
 typedef struct _stk_group{
-    unsigned int  groupid;
-    unsigned char groupname[STK_GROUP_NAME_SIZE];
+    unsigned int  gid;
+    unsigned char gname[STK_GROUP_NAME_SIZE];
     int           member_num;
     group_member  *members;
     struct _stk_group *next;

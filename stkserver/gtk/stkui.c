@@ -213,8 +213,8 @@ static void stk_grouptree_fill(GtkWidget *tree, stk_group *group)
 
     store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(tree)));
 
-    sprintf(buf_gid,      "%u ", group->groupid);
-    sprintf(buf_gname,    "%s ", group->groupname);
+    sprintf(buf_gid,      "%u ", group->gid);
+    sprintf(buf_gname,    "%s ", group->gname);
 
     member = group->members;
     while (member != NULL) {

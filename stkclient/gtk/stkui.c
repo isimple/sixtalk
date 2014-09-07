@@ -355,7 +355,7 @@ static gboolean stk_group_lclick(GtkWidget *widget, GdkEventButton *event)
     num = client.group_num;
     group = client.group;
     while (num-- && group != NULL) {
-        if (group->groupid == gid) {
+        if (group->gid == gid) {
             found = TRUE;
             break;
         }
@@ -603,8 +603,8 @@ void stk_buddywin_create(StkWidget *widgets)
     while (num-- && group != NULL) {
         char gid[STK_DEFAULT_SIZE] = {0};
         char gname[STK_DEFAULT_SIZE] = {0};
-        sprintf(gid, "%u", group->groupid);
-        strcpy(gname, group->groupname);
+        sprintf(gid, "%u", group->gid);
+        strcpy(gname, group->gname);
         stk_grouptree_fill(tree, gid, gname);
         group->menu = gtk_menu_new();
         stk_group_rclick(group);

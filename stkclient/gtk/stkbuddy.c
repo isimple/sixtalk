@@ -225,11 +225,11 @@ void stk_get_groupinfo(stk_group *group, char *buf)
         return;
     }
 
-    sprintf(tmp, "GroupID:\t\t%d\n", group->groupid);
+    sprintf(tmp, "GroupID:\t\t%d\n", group->gid);
     strcat(buf, tmp);
 
     memset(tmp, 0, sizeof(tmp));
-    sprintf(tmp, "GroupName:\t%s\n", group->groupname);
+    sprintf(tmp, "GroupName:\t%s\n", group->gname);
     strcat(buf, tmp);
 
     memset(tmp, 0, sizeof(tmp));

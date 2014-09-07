@@ -94,12 +94,12 @@ int stk_init_group()
             memset(group, 0, sizeof(stk_group));
             memset(members_str, 0, sizeof(members_str));
             INIT_LIST_HEAD(&group->list);
-            group->groupid = cJSON_GetObjectItem(item,"groupid")->valueint;
+            group->gid = cJSON_GetObjectItem(item,"gid")->valueint;
 #if 1
-            strcpy(group->groupname, cJSON_GetObjectItem(item,"groupname")->valuestring);
+            strcpy(group->gname, cJSON_GetObjectItem(item,"gname")->valuestring);
             strcpy(members_str, cJSON_GetObjectItem(item,"members")->valuestring);
 #else
-            memcpy(group->groupname, cJSON_GetObjectItem(item,"groupname")->valuestring, STK_GROUP_NAME_SIZE);
+            memcpy(group->gname, cJSON_GetObjectItem(item,"gname")->valuestring, STK_GROUP_NAME_SIZE);
             memcpy(members_str, cJSON_GetObjectItem(item,"members")->valuestring, STK_DEFAULT_SIZE);
 #endif
             group->member_num = stk_parse_member(members_str, group);
@@ -124,7 +124,7 @@ stk_group *stk_find_group(unsigned int gid)
     list_for_each(entry, &stk_groups) {
         stk_group *group;
         group = list_entry(entry, stk_group, list);
-        if (group->groupid == gid)
+        if (group->gid == gid)
             return group;
     }
     return NULL;
@@ -138,8 +138,8 @@ int stk_add_group(stk_group *group)
     if (new_group != NULL) {
         memset(new_group, 0, sizeof(stk_group));
         INIT_LIST_HEAD(&new_group->list);
-        new_group->groupid = group->groupid;
-        strcpy(new_group->groupname, group->groupname);
+        new_group->gid = group->gid;
+        strcpy(new_group->gname, group->gname);
         /* TODO: what about members? */
 
         list_add_tail(&new_group->list, &stk_groups);
@@ -211,8 +211,8 @@ int stk_print_group(stk_group *group)
     }
 
     printf("====================================================\n");
-    printf("Uid:\t\t%d\n", group->groupid);
-    printf("Groupname:\t%s\n", group->groupname);
+    printf("Uid:\t\t%d\n", group->gid);
+    printf("Groupname:\t%s\n", group->gname);
     printf("Members:\t");
     member = group->members;
     while (member != NULL) {
