@@ -1,0 +1,12 @@
+{
+    "Group1": {
+        "gid": 707,
+        "gname": "Group1",
+        "members": "107-108-109-110"
+    },
+    "Group2": {
+        "gid": 708,
+        "gname": "Group2",
+        "members": "110-111-112"
+    }
+}    

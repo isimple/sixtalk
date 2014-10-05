@@ -1,0 +1,50 @@
+{
+    "Jerry": {
+        "uid": 107,
+        "nickname": "Jerry",
+        "pass": "107",
+        "city": "Wuhan",
+        "phone": 107,
+        "gender": 1
+    },
+    "Tom": {
+        "uid": 108,
+        "nickname": "Tom",
+        "pass": "108",
+        "city": "Beijing",
+        "phone": 108,
+        "gender": 1
+    },
+    "Jason": {
+        "uid": 109,
+        "nickname": "Jason",
+        "pass": "109",
+        "city": "Shenzhen",
+        "phone": 109,
+        "gender":1 
+    },
+   "Animy": {
+        "uid": 110,
+        "nickname": "Animy",
+        "pass": "110",
+        "city": "Shanghai",
+        "phone": 110,
+        "gender": 2 
+    },
+   "Penny": {
+        "uid": 111,
+        "nickname": "Penny",
+        "pass": "111",
+        "city": "Xuzhou",
+        "phone": 111,
+        "gender": 2
+    },
+   "Sharmer": {
+        "uid": 112,
+        "nickname": "Sharmer",
+        "pass": "112",
+        "city": "Chongqing",
+        "phone": 112,
+        "gender": 2
+    }
+}    
