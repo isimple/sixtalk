@@ -22,12 +22,25 @@ int stk_init_buddy()
 
 stk_buddy *stk_find_buddy(unsigned int uid)
 {
+    stk_buddy *buddy;
     struct list_head *entry;
 
     list_for_each(entry, &stk_buddys) {
-        stk_buddy *buddy;
         buddy = list_entry(entry, stk_buddy, list);
         if (buddy->uid == uid)
+            return buddy;
+    }
+    return NULL;
+}
+
+stk_buddy *stk_find_buddy_by_window(HWND hwnd)
+{
+    stk_buddy *buddy;
+    struct list_head *entry;
+
+    list_for_each(entry, &stk_buddys) {
+        buddy = list_entry(entry, stk_buddy, list);
+        if (buddy->chat.window == hwnd)
             return buddy;
     }
     return NULL;
@@ -53,7 +66,7 @@ int stk_add_buddy(stk_buddy *buddy)
 
         list_add_tail(&new_buddy->list, &stk_buddys);
     } else {
-        stk_print("malloc error, what now?\n");
+        stk_log("malloc error, what now?\n");
         return -2;
     }
 
@@ -76,7 +89,7 @@ int stk_update_buddy(stk_buddy *buddy)
         new_buddy->phone = buddy->phone;
         new_buddy->gender = buddy->gender;
     } else {
-        stk_print("Error, No such buddy.\n");
+        stk_log("Error, No such buddy.\n");
         return -1;
     }
 
@@ -169,6 +182,7 @@ int stk_clear_buddy(client_config *config)
         free(group);
         group = next_group;
     }
+    return 0;
 }
 
 #if 0
